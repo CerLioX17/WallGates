@@ -1,0 +1,17 @@
+{
+  "name": "Ocean Night",
+  "author": "Wallgates",
+  "description": "Moonlight over a slow, endless ocean. Perfect for focus.",
+  "type": "shader",
+  "entry": "ocean.frag",
+  "preview": "preview.jpg",
+  "license": "CC-BY-4.0",
+  "version": "1.0.0",
+  "tags": ["ocean", "calm", "night", "moon"],
+  "properties": {
+    "speed": { "label": "Wave speed", "type": "slider", "min": 0, "max": 2, "step": 0.05, "default": 0.6 },
+    "moon": { "label": "Moon", "type": "color", "default": "#e0f2fe" },
+    "water": { "label": "Water", "type": "color", "default": "#0c4a6e" },
+    "sky": { "label": "Sky", "type": "color", "default": "#020617" }
+  }
+}

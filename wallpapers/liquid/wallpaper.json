@@ -1,0 +1,20 @@
+{
+  "name": "Liquid",
+  "author": "Wallgates",
+  "description": "Slow, silky gradients that never repeat. Calm, minimal and very light on the GPU.",
+  "type": "shader",
+  "entry": "liquid.frag",
+  "preview": "preview.jpg",
+  "license": "CC-BY-4.0",
+  "version": "1.0.0",
+  "tags": ["gradient", "minimal", "calm"],
+  "properties": {
+    "speed": { "label": "Speed", "type": "slider", "min": 0, "max": 1, "step": 0.02, "default": 0.25 },
+    "scale": { "label": "Scale", "type": "slider", "min": 0.5, "max": 3, "step": 0.05, "default": 1.2 },
+    "colorA": { "label": "Color 1", "type": "color", "default": "#0f172a" },
+    "colorB": { "label": "Color 2", "type": "color", "default": "#7c3aed" },
+    "colorC": { "label": "Color 3", "type": "color", "default": "#06b6d4" },
+    "colorD": { "label": "Color 4", "type": "color", "default": "#f472b6" },
+    "grain": { "label": "Film grain", "type": "slider", "min": 0, "max": 0.1, "step": 0.005, "default": 0.03 }
+  }
+}

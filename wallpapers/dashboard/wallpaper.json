@@ -1,0 +1,26 @@
+{
+  "name": "Dashboard",
+  "author": "Wallgates",
+  "description": "Clock, weather, what's playing and system load on a glassy live background. No Rainmeter needed.",
+  "type": "html",
+  "entry": "index.html",
+  "preview": "preview.jpg",
+  "license": "CC-BY-4.0",
+  "version": "1.0.0",
+  "tags": ["widgets", "clock", "weather", "music", "productivity"],
+  "capabilities": ["system", "media", "weather"],
+  "properties": {
+    "accent": { "label": "Accent", "type": "color", "default": "#8b5cf6" },
+    "background": { "label": "Background", "type": "select", "options": [
+      { "value": "aurora", "label": "Aurora gradient" },
+      { "value": "night", "label": "Deep night" },
+      { "value": "album", "label": "Album art (blurred)" }
+    ], "default": "aurora" },
+    "format24": { "label": "24-hour clock", "type": "bool", "default": true },
+    "seconds": { "label": "Show seconds", "type": "bool", "default": false },
+    "showWeather": { "label": "Weather card", "type": "bool", "default": true },
+    "showMedia": { "label": "Now playing card", "type": "bool", "default": true },
+    "showSystem": { "label": "System card", "type": "bool", "default": true },
+    "greeting": { "label": "Greeting", "type": "text", "default": "" }
+  }
+}

@@ -12,6 +12,7 @@
 const canvas = document.getElementById('c');
 const ctx = canvas.getContext('2d');
 let opts = { count: 140, speed: 1, linkDistance: 140, color: '#8fb3ff', background: '#070912', glow: true };
+let mouse = { x: 0, y: 0, inside: false };
 let paused = false, particles = [], w = 0, h = 0, dpr = 1, raf = 0, last = 0;
 
 function resize() {
@@ -39,7 +40,12 @@ function draw(dt) {
   ctx.fillStyle = opts.background; ctx.fillRect(0, 0, w, h);
   const [r, g, b] = rgb(opts.color);
   const d = opts.linkDistance, d2 = d * d;
+  const pull = opts.interact === 'repel' ? -1 : opts.interact === 'none' ? 0 : 1;
   for (const p of particles) {
+    if (pull && mouse.inside) {
+      const dx = mouse.x - p.x, dy = mouse.y - p.y, d = Math.hypot(dx, dy) + 1;
+      if (d < 220) { const f = (1 - d / 220) * 60 * pull * dt; p.x += dx / d * f; p.y += dy / d * f; }
+    }
     p.x += p.vx * dt * opts.speed; p.y += p.vy * dt * opts.speed;
     if (p.x < 0 || p.x > w) p.vx *= -1;
     if (p.y < 0 || p.y > h) p.vy *= -1;
@@ -64,6 +70,8 @@ function setPaused(p) { paused = p; cancelAnimationFrame(raf); if (!p) { last = 
 addEventListener('message', (e) => {
   const m = e.data;
   if (!m || m.type !== 'wallgates') return;
+  if (m.event === 'mouse') { mouse = { x: m.x * w, y: m.y * h, inside: m.inside }; return; }
+  if (m.event !== 'init' && m.event !== 'properties' && m.event !== 'pause') return;
   if (m.values) { opts = { ...opts, ...m.values }; spawn(); }
   if (m.paused !== paused) setPaused(m.paused);
   if (paused) draw(0); // show option changes even while paused

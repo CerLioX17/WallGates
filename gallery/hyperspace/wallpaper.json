@@ -1,0 +1,17 @@
+{
+  "name": "Hyperspace",
+  "author": "Wallgates",
+  "description": "A warp-speed starfield. Turn up your music and jump.",
+  "type": "shader",
+  "entry": "hyperspace.frag",
+  "preview": "preview.jpg",
+  "license": "CC-BY-4.0",
+  "version": "1.0.0",
+  "tags": ["space", "stars", "audio"],
+  "capabilities": ["audio", "mouse"],
+  "properties": {
+    "speed": { "label": "Warp speed", "type": "slider", "min": 0, "max": 3, "step": 0.05, "default": 0.8 },
+    "density": { "label": "Star density", "type": "slider", "min": 0.3, "max": 2, "step": 0.05, "default": 1 },
+    "tint": { "label": "Tint", "type": "color", "default": "#7dd3fc" }
+  }
+}

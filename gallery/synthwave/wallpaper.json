@@ -1,0 +1,19 @@
+{
+  "name": "Synthwave",
+  "author": "Wallgates",
+  "description": "Retro sun, neon grid and endless highway. The grid pulses with the bass.",
+  "type": "shader",
+  "entry": "synthwave.frag",
+  "preview": "preview.jpg",
+  "license": "CC-BY-4.0",
+  "version": "1.0.0",
+  "tags": ["retro", "80s", "neon", "audio"],
+  "capabilities": ["audio"],
+  "properties": {
+    "speed": { "label": "Speed", "type": "slider", "min": 0, "max": 3, "step": 0.05, "default": 1 },
+    "sunTop": { "label": "Sun (top)", "type": "color", "default": "#ffd166" },
+    "sunBottom": { "label": "Sun (bottom)", "type": "color", "default": "#ef476f" },
+    "grid": { "label": "Grid", "type": "color", "default": "#c026d3" },
+    "sky": { "label": "Sky", "type": "color", "default": "#1a0b2e" }
+  }
+}

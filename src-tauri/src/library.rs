@@ -1,4 +1,4 @@
-//! Wallpaper library: discovery, manifests, import and deletion.
+//! Wallpaper library: discovery, manifests, import, editing and deletion.
 //!
 //! A wallpaper is a folder containing `wallpaper.json` (see docs/wallpaper-format.md).
 //! Wallpapers live in two roots: `builtin` (shipped with the app, read-only)
@@ -11,10 +11,14 @@ use std::path::{Component, Path, PathBuf};
 
 pub const MANIFEST: &str = "wallpaper.json";
 
+/// Data a wallpaper may request. The user sees these as permission badges.
+pub const CAPABILITIES: &[&str] = &["audio", "mouse", "system", "media", "weather", "network"];
+
 #[derive(Clone, Debug)]
 pub struct Paths {
     pub builtin: PathBuf,
     pub user: PathBuf,
+    pub data: PathBuf,
     pub config_file: PathBuf,
 }
 
@@ -52,6 +56,30 @@ pub struct Manifest {
     /// Ordered map of property key -> property definition (label, type, default, ...).
     #[serde(default)]
     pub properties: Map<String, Value>,
+    /// Requested data/permissions, see [`CAPABILITIES`].
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub capabilities: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub tags: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub license: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub version: Option<String>,
+    /// Provenance: the wallpaper was made with generative AI.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub ai_generated: bool,
+    /// "everyone" (default) or "mature".
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub rating: Option<String>,
+    /// Compatibility layer, e.g. "wallpaperengine" for imported web wallpapers.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub compat: Option<String>,
+}
+
+impl Manifest {
+    pub fn has(&self, capability: &str) -> bool {
+        self.capabilities.iter().any(|c| c == capability)
+    }
 }
 
 #[derive(Serialize, Clone, Debug)]
@@ -60,6 +88,7 @@ pub struct WallpaperInfo {
     pub source: String,
     pub editable: bool,
     pub manifest: Manifest,
+    pub size_bytes: u64,
 }
 
 impl WallpaperInfo {
@@ -74,17 +103,55 @@ impl WallpaperInfo {
         }
         out
     }
+
+    pub fn dir(&self, paths: &Paths) -> PathBuf {
+        let (source, folder) = self.id.split_once('/').unwrap_or(("user", &self.id));
+        paths.root(source).unwrap_or(&paths.user).join(folder)
+    }
 }
 
 /// A single path segment that cannot escape its parent directory.
-fn is_safe_segment(s: &str) -> bool {
-    !s.is_empty() && !s.contains(['/', '\\']) && s != "." && s != ".."
+pub fn is_safe_segment(s: &str) -> bool {
+    !s.is_empty() && !s.contains(['/', '\\', ':']) && s != "." && s != ".."
 }
 
 /// Relative path that stays inside the wallpaper folder.
-fn is_safe_relative(p: &str) -> bool {
+pub fn is_safe_relative(p: &str) -> bool {
     let path = Path::new(p);
-    !p.is_empty() && path.components().all(|c| matches!(c, Component::Normal(_)))
+    !p.is_empty()
+        && !p.contains(':')
+        && path.components().all(|c| matches!(c, Component::Normal(_)))
+}
+
+fn dir_size(dir: &Path, depth: u32) -> u64 {
+    if depth > 8 {
+        return 0;
+    }
+    let Ok(entries) = fs::read_dir(dir) else { return 0 };
+    entries
+        .flatten()
+        .map(|e| match e.file_type() {
+            Ok(t) if t.is_dir() => dir_size(&e.path(), depth + 1),
+            Ok(t) if t.is_file() => e.metadata().map(|m| m.len()).unwrap_or(0),
+            _ => 0,
+        })
+        .sum()
+}
+
+pub fn parse_manifest(dir: &Path) -> Result<Manifest, String> {
+    let raw = fs::read(dir.join(MANIFEST)).map_err(|e| format!("{}: {e}", dir.display()))?;
+    let mut manifest: Manifest =
+        serde_json::from_slice(&raw).map_err(|e| format!("{}: {e}", dir.display()))?;
+    manifest.capabilities.retain(|c| CAPABILITIES.contains(&c.as_str()));
+    if !is_safe_relative(&manifest.entry) || !dir.join(&manifest.entry).is_file() {
+        return Err(format!("{}: entry '{}' not found", dir.display(), manifest.entry));
+    }
+    if let Some(p) = &manifest.preview {
+        if !is_safe_relative(p) || !dir.join(p).is_file() {
+            manifest.preview = None;
+        }
+    }
+    Ok(manifest)
 }
 
 fn load(dir: &Path, source: &str) -> Result<WallpaperInfo, String> {
@@ -93,17 +160,13 @@ fn load(dir: &Path, source: &str) -> Result<WallpaperInfo, String> {
         .and_then(|n| n.to_str())
         .ok_or("invalid folder name")?
         .to_string();
-    let raw = fs::read(dir.join(MANIFEST)).map_err(|e| format!("{}: {e}", dir.display()))?;
-    let manifest: Manifest =
-        serde_json::from_slice(&raw).map_err(|e| format!("{}: {e}", dir.display()))?;
-    if !is_safe_relative(&manifest.entry) || !dir.join(&manifest.entry).is_file() {
-        return Err(format!("{}: entry '{}' not found", dir.display(), manifest.entry));
-    }
+    let manifest = parse_manifest(dir)?;
     Ok(WallpaperInfo {
         id: format!("{source}/{folder}"),
         source: source.to_string(),
         editable: source == "user",
         manifest,
+        size_bytes: dir_size(dir, 0),
     })
 }
 
@@ -138,7 +201,7 @@ pub fn find(paths: &Paths, id: &str) -> Option<WallpaperInfo> {
     load(&paths.root(source)?.join(folder), source).ok()
 }
 
-fn slugify(name: &str) -> String {
+pub fn slugify(name: &str) -> String {
     let mut slug = String::new();
     for c in name.chars() {
         if c.is_ascii_alphanumeric() {
@@ -155,7 +218,7 @@ fn slugify(name: &str) -> String {
     }
 }
 
-fn unique_dir(root: &Path, name: &str) -> PathBuf {
+pub fn unique_dir(root: &Path, name: &str) -> PathBuf {
     let base = slugify(name);
     let mut candidate = root.join(&base);
     let mut n = 2;
@@ -166,14 +229,18 @@ fn unique_dir(root: &Path, name: &str) -> PathBuf {
     candidate
 }
 
-const IMAGE_EXT: &[&str] = &["png", "jpg", "jpeg", "webp", "gif", "bmp", "avif"];
-const VIDEO_EXT: &[&str] = &["mp4", "webm", "m4v", "mov"];
+pub fn id_of(dir: &Path) -> String {
+    format!("user/{}", dir.file_name().unwrap_or_default().to_string_lossy())
+}
+
+pub const IMAGE_EXT: &[&str] = &["png", "jpg", "jpeg", "webp", "gif", "bmp", "avif"];
+pub const VIDEO_EXT: &[&str] = &["mp4", "webm", "m4v", "mov"];
 
 pub const MEDIA_EXTENSIONS: &[&str] = &[
     "png", "jpg", "jpeg", "webp", "gif", "bmp", "avif", "mp4", "webm", "m4v", "mov",
 ];
 
-fn fit_property() -> Value {
+pub fn fit_property() -> Value {
     json!({
         "label": "Fit",
         "type": "select",
@@ -186,20 +253,36 @@ fn fit_property() -> Value {
     })
 }
 
+pub fn video_properties(props: &mut Map<String, Value>) {
+    props.insert(
+        "speed".into(),
+        json!({ "label": "Playback speed", "type": "slider", "min": 0.25, "max": 2, "step": 0.05, "default": 1 }),
+    );
+    props.insert(
+        "volume".into(),
+        json!({ "label": "Volume", "type": "slider", "min": 0, "max": 1, "step": 0.05, "default": 0 }),
+    );
+}
+
+pub fn write_manifest(dir: &Path, manifest: &Manifest) -> Result<(), String> {
+    let bytes = serde_json::to_vec_pretty(manifest).map_err(|e| e.to_string())?;
+    fs::write(dir.join(MANIFEST), bytes).map_err(|e| e.to_string())
+}
+
+pub fn kind_of_media(path: &Path) -> Option<(Kind, String)> {
+    let ext = path.extension()?.to_str()?.to_ascii_lowercase();
+    if IMAGE_EXT.contains(&ext.as_str()) {
+        Some((Kind::Image, ext))
+    } else if VIDEO_EXT.contains(&ext.as_str()) {
+        Some((Kind::Video, ext))
+    } else {
+        None
+    }
+}
+
 /// Turn a single image or video file into a user wallpaper. Returns the new id.
 pub fn import_file(paths: &Paths, file: &Path) -> Result<String, String> {
-    let ext = file
-        .extension()
-        .and_then(|e| e.to_str())
-        .map(|e| e.to_ascii_lowercase())
-        .ok_or("file has no extension")?;
-    let kind = if IMAGE_EXT.contains(&ext.as_str()) {
-        Kind::Image
-    } else if VIDEO_EXT.contains(&ext.as_str()) {
-        Kind::Video
-    } else {
-        return Err(format!("unsupported file type: .{ext}"));
-    };
+    let (kind, ext) = kind_of_media(file).ok_or("unsupported file type")?;
     let name = file
         .file_stem()
         .and_then(|s| s.to_str())
@@ -209,19 +292,15 @@ pub fn import_file(paths: &Paths, file: &Path) -> Result<String, String> {
     let dir = unique_dir(&paths.user, &name);
     fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
     let entry = format!("media.{ext}");
-    fs::copy(file, dir.join(&entry)).map_err(|e| e.to_string())?;
+    if let Err(e) = fs::copy(file, dir.join(&entry)) {
+        let _ = fs::remove_dir_all(&dir);
+        return Err(e.to_string());
+    }
 
     let mut properties = Map::new();
     properties.insert("fit".into(), fit_property());
     if kind == Kind::Video {
-        properties.insert(
-            "speed".into(),
-            json!({ "label": "Playback speed", "type": "slider", "min": 0.25, "max": 2, "step": 0.05, "default": 1 }),
-        );
-        properties.insert(
-            "volume".into(),
-            json!({ "label": "Volume", "type": "slider", "min": 0, "max": 1, "step": 0.05, "default": 0 }),
-        );
+        video_properties(&mut properties);
     }
     let manifest = Manifest {
         name,
@@ -231,13 +310,19 @@ pub fn import_file(paths: &Paths, file: &Path) -> Result<String, String> {
         entry: entry.clone(),
         preview: (kind == Kind::Image).then_some(entry),
         properties,
+        capabilities: Vec::new(),
+        tags: Vec::new(),
+        license: None,
+        version: None,
+        ai_generated: false,
+        rating: None,
+        compat: None,
     };
-    let bytes = serde_json::to_vec_pretty(&manifest).map_err(|e| e.to_string())?;
-    fs::write(dir.join(MANIFEST), bytes).map_err(|e| e.to_string())?;
-    Ok(format!("user/{}", dir.file_name().unwrap().to_string_lossy()))
+    write_manifest(&dir, &manifest)?;
+    Ok(id_of(&dir))
 }
 
-fn copy_dir(from: &Path, to: &Path, depth: u32) -> Result<(), String> {
+pub fn copy_dir(from: &Path, to: &Path, depth: u32) -> Result<(), String> {
     if depth > 16 {
         return Err("folder nesting too deep".into());
     }
@@ -255,29 +340,214 @@ fn copy_dir(from: &Path, to: &Path, depth: u32) -> Result<(), String> {
     Ok(())
 }
 
+/// Validate a staged folder and move it into the user library.
+pub fn adopt_folder(paths: &Paths, staged: &Path) -> Result<String, String> {
+    let manifest = parse_manifest(staged)?;
+    let dir = unique_dir(&paths.user, &manifest.name);
+    if fs::rename(staged, &dir).is_err() {
+        copy_dir(staged, &dir, 0)?;
+        let _ = fs::remove_dir_all(staged);
+    }
+    Ok(id_of(&dir))
+}
+
 /// Copy a wallpaper folder (one that contains wallpaper.json) into the user library.
 pub fn import_folder(paths: &Paths, folder: &Path) -> Result<String, String> {
-    let raw = fs::read(folder.join(MANIFEST))
-        .map_err(|_| format!("no {MANIFEST} found in the selected folder"))?;
-    let manifest: Manifest = serde_json::from_slice(&raw).map_err(|e| format!("invalid {MANIFEST}: {e}"))?;
-    let dir = unique_dir(&paths.user, &manifest.name);
-    copy_dir(folder, &dir, 0)?;
-    let id = format!("user/{}", dir.file_name().unwrap().to_string_lossy());
-    match load(&dir, "user") {
-        Ok(_) => Ok(id),
-        Err(e) => {
-            let _ = fs::remove_dir_all(&dir);
-            Err(e)
-        }
-    }
+    parse_manifest(folder).map_err(|e| format!("not a Wallgates wallpaper folder ({e})"))?;
+    let staged = staging_dir(paths)?;
+    copy_dir(folder, &staged, 0)?;
+    adopt_folder(paths, &staged).inspect_err(|_| {
+        let _ = fs::remove_dir_all(&staged);
+    })
+}
+
+pub fn staging_dir(paths: &Paths) -> Result<PathBuf, String> {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_nanos())
+        .unwrap_or(0);
+    let dir = paths.data.join("staging").join(format!("{nanos}"));
+    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir)
 }
 
 pub fn delete(paths: &Paths, id: &str) -> Result<(), String> {
     let (source, folder) = id.split_once('/').ok_or("invalid id")?;
     if source != "user" || !is_safe_segment(folder) {
-        return Err("only user wallpapers can be deleted".into());
+        return Err("only your own wallpapers can be deleted".into());
     }
     fs::remove_dir_all(paths.user.join(folder)).map_err(|e| e.to_string())
+}
+
+// ------------------------------------------------------------------ editor
+
+/// Resolve a file inside a user wallpaper for editing.
+fn editable_path(paths: &Paths, id: &str, rel: &str) -> Result<PathBuf, String> {
+    let (source, folder) = id.split_once('/').ok_or("invalid id")?;
+    if source != "user" || !is_safe_segment(folder) {
+        return Err("built-in wallpapers are read-only: duplicate it first".into());
+    }
+    if !is_safe_relative(rel) {
+        return Err("invalid file path".into());
+    }
+    Ok(paths.user.join(folder).join(rel))
+}
+
+const TEXT_EXT: &[&str] = &["html", "htm", "js", "mjs", "css", "json", "frag", "glsl", "txt", "svg", "md"];
+
+pub fn list_text_files(paths: &Paths, id: &str) -> Result<Vec<String>, String> {
+    let info = find(paths, id).ok_or("wallpaper not found")?;
+    let root = info.dir(paths);
+    let mut out = Vec::new();
+    fn walk(root: &Path, dir: &Path, out: &mut Vec<String>, depth: u32) {
+        if depth > 6 || out.len() > 200 {
+            return;
+        }
+        let Ok(entries) = fs::read_dir(dir) else { return };
+        for e in entries.flatten() {
+            let p = e.path();
+            match e.file_type() {
+                Ok(t) if t.is_dir() => walk(root, &p, out, depth + 1),
+                Ok(t) if t.is_file() => {
+                    let ext = p.extension().and_then(|x| x.to_str()).unwrap_or("").to_ascii_lowercase();
+                    if TEXT_EXT.contains(&ext.as_str()) {
+                        if let Ok(rel) = p.strip_prefix(root) {
+                            out.push(rel.to_string_lossy().replace('\\', "/"));
+                        }
+                    }
+                }
+                _ => {}
+            }
+        }
+    }
+    walk(&root, &root, &mut out, 0);
+    out.sort_by_key(|f| (f != MANIFEST, f != &info.manifest.entry, f.clone()));
+    Ok(out)
+}
+
+pub fn read_text(paths: &Paths, id: &str, rel: &str) -> Result<String, String> {
+    let info = find(paths, id).ok_or("wallpaper not found")?;
+    if !is_safe_relative(rel) {
+        return Err("invalid file path".into());
+    }
+    let path = info.dir(paths).join(rel);
+    if fs::metadata(&path).map(|m| m.len()).unwrap_or(0) > 2 * 1024 * 1024 {
+        return Err("file too large to edit".into());
+    }
+    fs::read_to_string(path).map_err(|e| e.to_string())
+}
+
+pub fn write_text(paths: &Paths, id: &str, rel: &str, content: &str) -> Result<(), String> {
+    let path = editable_path(paths, id, rel)?;
+    if rel == MANIFEST {
+        // Refuse a manifest that would break the wallpaper.
+        let m: Manifest = serde_json::from_str(content).map_err(|e| format!("wallpaper.json: {e}"))?;
+        if !is_safe_relative(&m.entry) {
+            return Err("wallpaper.json: invalid entry".into());
+        }
+    }
+    if let Some(parent) = path.parent() {
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+    }
+    fs::write(path, content).map_err(|e| e.to_string())
+}
+
+/// Copy any wallpaper (e.g. a built-in) into the user library so it can be edited.
+pub fn duplicate(paths: &Paths, id: &str) -> Result<String, String> {
+    let info = find(paths, id).ok_or("wallpaper not found")?;
+    let staged = staging_dir(paths)?;
+    copy_dir(&info.dir(paths), &staged, 0)?;
+    let mut manifest = parse_manifest(&staged)?;
+    manifest.name = format!("{} (copy)", manifest.name);
+    write_manifest(&staged, &manifest)?;
+    adopt_folder(paths, &staged)
+}
+
+pub const SHADER_TEMPLATE: &str = r#"// Write a Shadertoy-style shader. Uniforms u_<property> come from wallpaper.json.
+// Available: iResolution, iTime, iTimeDelta, iFrame, iMouse, iAudio[64], iAudioLevel.
+
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+  vec2 uv = fragCoord / iResolution.xy;
+  float t = iTime * u_speed;
+  vec3 col = 0.5 + 0.5 * cos(t + uv.xyx * 3.0 + vec3(0.0, 2.0, 4.0));
+  col = mix(col, u_tint, 0.35);
+  // React to music: brighten with the overall audio level.
+  col *= 0.8 + 0.6 * iAudioLevel;
+  fragColor = vec4(col, 1.0);
+}
+"#;
+
+pub const HTML_TEMPLATE: &str = r#"<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body { display: grid; place-items: center; background: var(--bg, #0b0b16); color: #fff;
+         font: 300 8vw/1 system-ui, sans-serif; transition: background .4s; }
+</style>
+</head>
+<body>
+<div id="title">Hello, Wallgates</div>
+<script>
+  // Wallgates sends { type: 'wallgates', event, values, paused, ... } via postMessage.
+  addEventListener('message', (e) => {
+    const m = e.data;
+    if (!m || m.type !== 'wallgates') return;
+    if (m.values) {
+      document.body.style.setProperty('--bg', m.values.background);
+      document.getElementById('title').textContent = m.values.text;
+    }
+  });
+</script>
+</body>
+</html>
+"#;
+
+/// Create a new user wallpaper from a template. Returns its id.
+pub fn create_from_template(paths: &Paths, template: &str, name: &str) -> Result<String, String> {
+    let staged = staging_dir(paths)?;
+    let name = if name.trim().is_empty() { "My wallpaper" } else { name.trim() };
+    let (kind, entry, content, properties) = match template {
+        "shader" => (
+            Kind::Shader,
+            "main.frag",
+            SHADER_TEMPLATE,
+            json!({
+                "speed": { "label": "Speed", "type": "slider", "min": 0, "max": 3, "step": 0.05, "default": 1 },
+                "tint": { "label": "Tint", "type": "color", "default": "#8b5cf6" }
+            }),
+        ),
+        "html" => (
+            Kind::Html,
+            "index.html",
+            HTML_TEMPLATE,
+            json!({
+                "text": { "label": "Text", "type": "text", "default": "Hello, Wallgates" },
+                "background": { "label": "Background", "type": "color", "default": "#0b0b16" }
+            }),
+        ),
+        _ => return Err("unknown template".into()),
+    };
+    fs::write(staged.join(entry), content).map_err(|e| e.to_string())?;
+    let manifest = Manifest {
+        name: name.to_string(),
+        author: String::new(),
+        description: String::new(),
+        kind,
+        entry: entry.into(),
+        preview: None,
+        properties: properties.as_object().cloned().unwrap_or_default(),
+        capabilities: if kind == Kind::Shader { vec!["audio".into()] } else { Vec::new() },
+        tags: Vec::new(),
+        license: Some("CC-BY-4.0".into()),
+        version: Some("1.0.0".into()),
+        ai_generated: false,
+        rating: None,
+        compat: None,
+    };
+    write_manifest(&staged, &manifest)?;
+    adopt_folder(paths, &staged)
 }
 
 #[cfg(test)]
@@ -294,9 +564,25 @@ mod tests {
     fn rejects_traversal() {
         assert!(!is_safe_segment(".."));
         assert!(!is_safe_segment("a/b"));
+        assert!(!is_safe_segment("C:"));
         assert!(!is_safe_relative("../x"));
         assert!(!is_safe_relative("/etc/passwd"));
+        assert!(!is_safe_relative("C:/Windows"));
         assert!(is_safe_relative("assets/a.png"));
+    }
+
+    fn test_paths(tag: &str) -> Paths {
+        let base = std::env::temp_dir().join(format!("wg-lib-{tag}-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&base);
+        let p = Paths {
+            builtin: base.join("builtin"),
+            user: base.join("user"),
+            data: base.join("data"),
+            config_file: base.join("config.json"),
+        };
+        fs::create_dir_all(&p.builtin).unwrap();
+        fs::create_dir_all(&p.user).unwrap();
+        p
     }
 
     #[test]
@@ -306,7 +592,7 @@ mod tests {
             "properties": { "speed": { "type": "slider", "default": 1 }, "c": { "type": "color", "default": "#fff" } }
         }))
         .unwrap();
-        let info = WallpaperInfo { id: "builtin/t".into(), source: "builtin".into(), editable: false, manifest };
+        let info = WallpaperInfo { id: "builtin/t".into(), source: "builtin".into(), editable: false, manifest, size_bytes: 0 };
         let mut o = Map::new();
         o.insert("speed".into(), json!(2));
         o.insert("stale".into(), json!(true));
@@ -314,5 +600,25 @@ mod tests {
         assert_eq!(v["speed"], json!(2));
         assert_eq!(v["c"], json!("#fff"));
         assert!(!v.contains_key("stale"));
+    }
+
+    #[test]
+    fn template_edit_duplicate_delete() {
+        let p = test_paths("tpl");
+        let id = create_from_template(&p, "shader", "Neon").unwrap();
+        assert_eq!(id, "user/neon");
+        let files = list_text_files(&p, &id).unwrap();
+        assert_eq!(files[0], MANIFEST);
+        assert!(files.contains(&"main.frag".to_string()));
+        write_text(&p, &id, "main.frag", "void mainImage(out vec4 c, in vec2 f){c=vec4(1);}").unwrap();
+        assert!(read_text(&p, &id, "main.frag").unwrap().contains("vec4(1)"));
+        assert!(write_text(&p, &id, MANIFEST, "{ broken").is_err());
+        assert!(write_text(&p, &id, "../escape.txt", "x").is_err());
+        let copy = duplicate(&p, &id).unwrap();
+        assert_eq!(find(&p, &copy).unwrap().manifest.name, "Neon (copy)");
+        delete(&p, &copy).unwrap();
+        assert!(find(&p, &copy).is_none());
+        assert!(delete(&p, "builtin/x").is_err());
+        let _ = fs::remove_dir_all(p.user.parent().unwrap());
     }
 }

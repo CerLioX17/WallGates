@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Wallgates",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "identifier": "app.wallgates.desktop",
   "build": {
     "frontendDist": "../ui"
@@ -13,11 +13,14 @@
         "label": "main",
         "title": "Wallgates",
         "url": "index.html",
-        "width": 1180,
-        "height": 760,
-        "minWidth": 820,
-        "minHeight": 540,
-        "center": true
+        "width": 1280,
+        "height": 820,
+        "minWidth": 900,
+        "minHeight": 600,
+        "center": true,
+        "decorations": false,
+        "visible": false,
+        "backgroundColor": "#08080f"
       }
     ],
     "security": {
@@ -26,9 +29,18 @@
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": [
+      "nsis",
+      "msi",
+      "deb",
+      "appimage"
+    ],
+    "publisher": "Wallgates",
+    "copyright": "Copyright © 2026 Wallgates contributors. Licensed under GPL-3.0-or-later.",
     "category": "Utility",
-    "shortDescription": "Open-source live wallpaper engine",
+    "shortDescription": "Wallgates — open-source live wallpaper engine",
+    "longDescription": "Live wallpapers for your desktop: shaders, web pages, videos and images, fully customizable, light on resources and safe by design.",
+    "homepage": "https://github.com/CerLioX17/WallGates",
     "licenseFile": "../LICENSE",
     "icon": [
       "icons/32x32.png",
@@ -39,6 +51,45 @@
     ],
     "resources": {
       "../wallpapers/": "wallpapers/"
-    }
+    },
+    "fileAssociations": [
+      {
+        "ext": [
+          "wallgates"
+        ],
+        "name": "Wallgates Wallpaper",
+        "description": "Wallgates wallpaper package",
+        "role": "Viewer",
+        "mimeType": "application/x-wallgates"
+      }
+    ],
+    "windows": {
+      "webviewInstallMode": {
+        "type": "downloadBootstrapper",
+        "silent": true
+      },
+      "nsis": {
+        "installMode": "currentUser",
+        "installerIcon": "icons/icon.ico",
+        "headerImage": "installer/nsis-header.bmp",
+        "sidebarImage": "installer/nsis-sidebar.bmp",
+        "languages": [
+          "English",
+          "Italian"
+        ],
+        "displayLanguageSelector": true
+      },
+      "wix": {
+        "bannerPath": "installer/wix-banner.bmp",
+        "dialogImagePath": "installer/wix-dialog.bmp",
+        "language": "en-US"
+      }
+    },
+    "linux": {
+      "deb": {
+        "depends": []
+      }
+    },
+    "createUpdaterArtifacts": false
   }
 }

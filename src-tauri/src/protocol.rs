@@ -3,8 +3,14 @@
 //! URL layout: `wp://localhost/<source>/<folder>/<path>` (on Windows the webview
 //! sees it as `http://wp.localhost/...`). Paths are canonicalized and must stay
 //! inside the library root. HTTP Range requests are supported so video can seek and loop.
+//!
+//! Security: HTML wallpapers are served with a Content-Security-Policy that
+//! blocks all network access unless the wallpaper declares the `network`
+//! capability ("offline by default"). `/__wallgates/*` serves the creator SDK
+//! and the Wallpaper Engine compatibility shim, which is injected into
+//! imported WE web wallpapers.
 
-use crate::library::Paths;
+use crate::library::{self, Paths};
 use percent_encoding::percent_decode_str;
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
@@ -47,6 +53,44 @@ fn mime(path: &Path) -> &'static str {
     }
 }
 
+const SDK_JS: &str = include_str!("../../ui/sdk/wallgates-sdk.js");
+const WE_SHIM_JS: &str = include_str!("../../ui/sdk/we-shim.js");
+
+/// Allowed sources for wallpapers without the `network` capability.
+const OFFLINE_CSP: &str = "default-src 'self' http://wp.localhost wp: data: blob: 'unsafe-inline' 'unsafe-eval'; \
+     form-action 'none'";
+
+fn internal(name: &str) -> Response<Vec<u8>> {
+    let body = match name {
+        "wallgates-sdk.js" => SDK_JS,
+        "we-shim.js" => WE_SHIM_JS,
+        _ => return status(StatusCode::NOT_FOUND),
+    };
+    Response::builder()
+        .status(StatusCode::OK)
+        .header(header::CONTENT_TYPE, "text/javascript; charset=utf-8")
+        .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
+        .body(body.as_bytes().to_vec())
+        .unwrap()
+}
+
+/// Insert a script tag as early as possible in an HTML document.
+fn inject_script(html: &[u8], src: &str) -> Vec<u8> {
+    let text = String::from_utf8_lossy(html);
+    let tag = format!("<script src=\"{src}\"></script>");
+    let lower = text.to_ascii_lowercase();
+    let pos = lower
+        .find("<head")
+        .and_then(|i| lower[i..].find('>').map(|j| i + j + 1))
+        .or_else(|| lower.find("<html").and_then(|i| lower[i..].find('>').map(|j| i + j + 1)))
+        .unwrap_or(0);
+    let mut out = String::with_capacity(text.len() + tag.len());
+    out.push_str(&text[..pos]);
+    out.push_str(&tag);
+    out.push_str(&text[pos..]);
+    out.into_bytes()
+}
+
 fn status(code: StatusCode) -> Response<Vec<u8>> {
     Response::builder()
         .status(code)
@@ -83,6 +127,9 @@ pub fn handle(paths: &Paths, request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
     let Some((source, rest)) = rel.split_once('/') else {
         return status(StatusCode::NOT_FOUND);
     };
+    if source == "__wallgates" {
+        return internal(rest);
+    }
     let Some(root) = paths.root(source) else {
         return status(StatusCode::NOT_FOUND);
     };
@@ -133,12 +180,34 @@ pub fn handle(paths: &Paths, request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
     if f.read_to_end(&mut buf).is_err() {
         return status(StatusCode::INTERNAL_SERVER_ERROR);
     }
+
+    let mut builder = builder;
+    if content_type.starts_with("text/html") {
+        // Look up the wallpaper this page belongs to: <source>/<folder>/...
+        let folder = rest.split('/').next().unwrap_or("");
+        let manifest = library::find(paths, &format!("{source}/{folder}")).map(|w| w.manifest);
+        let network = manifest.as_ref().is_some_and(|m| m.has("network"));
+        if !network {
+            builder = builder.header("Content-Security-Policy", OFFLINE_CSP);
+        }
+        if manifest.as_ref().and_then(|m| m.compat.as_deref()) == Some("wallpaperengine") {
+            buf = inject_script(&buf, "/__wallgates/we-shim.js");
+        }
+    }
     builder.status(StatusCode::OK).body(buf).unwrap()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn injects_early() {
+        let out = String::from_utf8(inject_script(b"<html><HEAD lang=x><title>t</title></head></html>", "/s.js")).unwrap();
+        assert_eq!(out, "<html><HEAD lang=x><script src=\"/s.js\"></script><title>t</title></head></html>");
+        let bare = String::from_utf8(inject_script(b"<p>x</p>", "/s.js")).unwrap();
+        assert!(bare.starts_with("<script"));
+    }
 
     #[test]
     fn ranges() {

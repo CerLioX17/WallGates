@@ -1,0 +1,22 @@
+{
+  "name": "Gatescape",
+  "author": "Wallgates",
+  "description": "The Wallgates signature: a luminous gate opening onto living light. Breathes with your music and follows your cursor.",
+  "type": "shader",
+  "entry": "gatescape.frag",
+  "preview": "preview.jpg",
+  "license": "CC-BY-4.0",
+  "version": "1.0.0",
+  "tags": ["brand", "portal", "abstract", "audio"],
+  "capabilities": ["audio", "mouse"],
+  "properties": {
+    "speed": { "label": "Speed", "type": "slider", "min": 0, "max": 2, "step": 0.05, "default": 0.5 },
+    "glow": { "label": "Glow", "type": "slider", "min": 0.2, "max": 2, "step": 0.05, "default": 1 },
+    "reactivity": { "label": "Music reactivity", "type": "slider", "min": 0, "max": 2, "step": 0.05, "default": 1 },
+    "parallax": { "label": "Cursor parallax", "type": "slider", "min": 0, "max": 1, "step": 0.05, "default": 0.5 },
+    "colorA": { "label": "Color 1", "type": "color", "default": "#22d3ee" },
+    "colorB": { "label": "Color 2", "type": "color", "default": "#8b5cf6" },
+    "colorC": { "label": "Color 3", "type": "color", "default": "#ec4899" },
+    "stars": { "label": "Stars", "type": "bool", "default": true }
+  }
+}

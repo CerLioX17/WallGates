@@ -1,16 +1,78 @@
 {
   "name": "Constellation",
   "author": "Wallgates",
-  "description": "Drifting particles connected by light — an HTML/Canvas wallpaper.",
+  "description": "Drifting particles connected by light. They gather around your cursor.",
   "type": "html",
   "entry": "index.html",
   "preview": "preview.jpg",
   "properties": {
-    "count": { "label": "Particles", "type": "slider", "min": 20, "max": 400, "step": 10, "default": 140 },
-    "speed": { "label": "Speed", "type": "slider", "min": 0, "max": 3, "step": 0.1, "default": 1 },
-    "linkDistance": { "label": "Link distance", "type": "slider", "min": 0, "max": 300, "step": 10, "default": 140 },
-    "color": { "label": "Particle color", "type": "color", "default": "#8fb3ff" },
-    "background": { "label": "Background", "type": "color", "default": "#070912" },
-    "glow": { "label": "Glow", "type": "bool", "default": true }
-  }
+    "count": {
+      "label": "Particles",
+      "type": "slider",
+      "min": 20,
+      "max": 400,
+      "step": 10,
+      "default": 140
+    },
+    "speed": {
+      "label": "Speed",
+      "type": "slider",
+      "min": 0,
+      "max": 3,
+      "step": 0.1,
+      "default": 1
+    },
+    "linkDistance": {
+      "label": "Link distance",
+      "type": "slider",
+      "min": 0,
+      "max": 300,
+      "step": 10,
+      "default": 140
+    },
+    "color": {
+      "label": "Particle color",
+      "type": "color",
+      "default": "#8fb3ff"
+    },
+    "background": {
+      "label": "Background",
+      "type": "color",
+      "default": "#070912"
+    },
+    "glow": {
+      "label": "Glow",
+      "type": "bool",
+      "default": true
+    },
+    "interact": {
+      "label": "Cursor interaction",
+      "type": "select",
+      "options": [
+        {
+          "value": "attract",
+          "label": "Attract"
+        },
+        {
+          "value": "repel",
+          "label": "Repel"
+        },
+        {
+          "value": "none",
+          "label": "None"
+        }
+      ],
+      "default": "attract"
+    }
+  },
+  "capabilities": [
+    "mouse"
+  ],
+  "license": "CC-BY-4.0",
+  "version": "1.1.0",
+  "tags": [
+    "particles",
+    "network",
+    "interactive"
+  ]
 }

@@ -6,11 +6,43 @@
   "entry": "aurora.frag",
   "preview": "preview.jpg",
   "properties": {
-    "speed": { "label": "Speed", "type": "slider", "min": 0, "max": 3, "step": 0.05, "default": 0.6 },
-    "intensity": { "label": "Intensity", "type": "slider", "min": 0.2, "max": 2, "step": 0.05, "default": 1 },
-    "colorA": { "label": "Primary color", "type": "color", "default": "#2de2a6" },
-    "colorB": { "label": "Secondary color", "type": "color", "default": "#7a5cff" },
-    "sky": { "label": "Sky color", "type": "color", "default": "#04060f" },
-    "stars": { "label": "Stars", "type": "bool", "default": true }
-  }
+    "speed": {
+      "label": "Speed",
+      "type": "slider",
+      "min": 0,
+      "max": 3,
+      "step": 0.05,
+      "default": 0.6
+    },
+    "intensity": {
+      "label": "Intensity",
+      "type": "slider",
+      "min": 0.2,
+      "max": 2,
+      "step": 0.05,
+      "default": 1
+    },
+    "colorA": {
+      "label": "Primary color",
+      "type": "color",
+      "default": "#2de2a6"
+    },
+    "colorB": {
+      "label": "Secondary color",
+      "type": "color",
+      "default": "#7a5cff"
+    },
+    "sky": {
+      "label": "Sky color",
+      "type": "color",
+      "default": "#04060f"
+    },
+    "stars": {
+      "label": "Stars",
+      "type": "bool",
+      "default": true
+    }
+  },
+  "license": "CC-BY-4.0",
+  "version": "1.0.0"
 }

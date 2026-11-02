@@ -54,6 +54,7 @@ function setPaused(p) {
 addEventListener('message', (e) => {
   const m = e.data;
   if (!m || m.type !== 'wallgates') return;
+  if (m.event !== 'init' && m.event !== 'properties' && m.event !== 'pause') return;
   if (m.values) { o = { ...o, ...m.values }; apply(); }
   setPaused(!!m.paused);
 });

@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "wallpaper-host",
+  "description": "Wallpaper host windows (one per display): receive state and live data events only.",
+  "windows": ["wp-*"],
+  "permissions": ["core:event:default"]
+}

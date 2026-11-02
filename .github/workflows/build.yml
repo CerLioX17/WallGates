@@ -10,6 +10,10 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: ${{ !startsWith(github.ref, 'refs/tags/') }}
+
 jobs:
   test:
     runs-on: ubuntu-22.04
@@ -18,7 +22,7 @@ jobs:
       - name: Install Linux dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev
       - uses: dtolnay/rust-toolchain@stable
       - uses: swatinem/rust-cache@v2
         with:
@@ -26,6 +30,10 @@ jobs:
       - name: Unit tests
         working-directory: src-tauri
         run: cargo test
+      - name: Gallery index is up to date
+        run: |
+          python3 scripts/build_gallery.py
+          git diff --exit-code gallery/index.json
 
   build:
     needs: test
@@ -40,7 +48,7 @@ jobs:
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev libssl-dev
       - uses: actions/setup-node@v5
         with:
           node-version: 22
@@ -50,16 +58,40 @@ jobs:
         with:
           workspaces: "./src-tauri -> target"
       - run: npm ci
-      # On a v* tag this publishes a draft GitHub Release with the installers.
+
+      # On a v* tag this publishes a public GitHub Release with the installers
+      # as plain files (zipped CI artifacts trip Chrome and antivirus heuristics).
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
           releaseName: "Wallgates ${{ github.ref_name }}"
-          releaseBody: "Download the installer for your system from the assets below."
-          releaseDraft: true
+          releaseBody: |
+            ## Download
+            **Windows:** `Wallgates_x.y.z_x64-setup.exe` (recommended, no admin rights needed) or the `.msi`.
+            **Linux:** `.AppImage` or `.deb`.
+
+            SHA-256 checksums are in `SHA256SUMS.txt`. See the README for what's new.
+          releaseDraft: false
+          prerelease: false
+
+      - name: Checksums
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          cd src-tauri/target/release/bundle
+          files=$(ls msi/*.msi nsis/*.exe deb/*.deb appimage/*.AppImage 2>/dev/null || true)
+          [ -z "$files" ] && exit 0
+          out="SHA256SUMS-${{ runner.os }}.txt"
+          sha256sum $files | sed 's#  [a-z]*/#  #' > "$out"
+          cat "$out"
+          gh release upload "${{ github.ref_name }}" "$out" --clobber
+
       - uses: actions/upload-artifact@v4
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
         with:
           name: wallgates-${{ runner.os }}
           path: |

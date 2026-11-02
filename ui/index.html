@@ -7,57 +7,46 @@
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <header class="topbar">
-    <div class="brand">
-      <img src="icon.png" alt="" width="28" height="28" />
-      <span>Wallgates</span>
+  <header id="titlebar" data-tauri-drag-region>
+    <div class="brand" data-tauri-drag-region>
+      <img src="icon.png" alt="" width="22" height="22" />
+      <span data-tauri-drag-region>Wallgates</span>
     </div>
-    <div class="topbar-actions">
-      <span id="status" class="pill">Running</span>
-      <button id="pause-btn" class="btn">Pause</button>
+    <button id="status" class="pill running" data-tauri-drag-region></button>
+    <div class="spacer" data-tauri-drag-region></div>
+    <div class="quick">
+      <button id="q-pause" class="icon-btn" data-i18n-title="action.pause"></button>
+      <button id="q-next" class="icon-btn" data-i18n-title="action.next"></button>
+      <button id="q-mute" class="icon-btn" data-i18n-title="action.mute"></button>
+    </div>
+    <div class="win-controls">
+      <button id="w-min" class="win-btn" aria-label="Minimize"></button>
+      <button id="w-max" class="win-btn" aria-label="Maximize"></button>
+      <button id="w-close" class="win-btn close" aria-label="Close"></button>
     </div>
   </header>
 
-  <main class="layout">
-    <section class="library">
-      <div class="toolbar">
-        <input id="search" type="search" placeholder="Search wallpapers" autocomplete="off" />
-        <div class="chips" role="tablist">
-          <button class="chip active" data-filter="all">All</button>
-          <button class="chip" data-filter="builtin">Built-in</button>
-          <button class="chip" data-filter="user">Mine</button>
-        </div>
-        <div class="spacer"></div>
-        <button id="import-file" class="btn primary">Import image / video</button>
-        <button id="import-folder" class="btn">Import folder</button>
-        <button id="open-folder" class="btn ghost" title="Open the user wallpaper folder">Open folder</button>
-      </div>
-      <div id="grid" class="grid"></div>
-      <p id="empty" class="empty" hidden>No wallpapers match.</p>
-    </section>
+  <div id="app">
+    <nav id="sidebar">
+      <button class="nav" data-route="library"><span class="ico" data-icon="grid"></span><span data-i18n="nav.library"></span></button>
+      <button class="nav" data-route="displays"><span class="ico" data-icon="monitor"></span><span data-i18n="nav.displays"></span></button>
+      <button class="nav" data-route="playlists"><span class="ico" data-icon="list"></span><span data-i18n="nav.playlists"></span></button>
+      <button class="nav" data-route="gallery"><span class="ico" data-icon="sparkles"></span><span data-i18n="nav.gallery"></span></button>
+      <button class="nav" data-route="create"><span class="ico" data-icon="code"></span><span data-i18n="nav.create"></span></button>
+      <div class="nav-spacer"></div>
+      <div id="update-banner" hidden></div>
+      <button class="nav" data-route="settings"><span class="ico" data-icon="settings"></span><span data-i18n="nav.settings"></span></button>
+      <div class="sidebar-foot"><span id="version"></span></div>
+    </nav>
+    <main id="view"></main>
+  </div>
 
-    <aside class="panel">
-      <div id="details"></div>
-      <section class="settings">
-        <h3>Performance</h3>
-        <label class="row"><span>Pause when an app is fullscreen</span><input type="checkbox" class="switch" data-setting="pause_on_fullscreen" /></label>
-        <label class="row"><span>Pause when an app is maximized</span><input type="checkbox" class="switch" data-setting="pause_on_maximized" /></label>
-        <label class="row"><span>Pause on battery</span><input type="checkbox" class="switch" data-setting="pause_on_battery" /></label>
-        <label class="row"><span>Shader frame limit</span>
-          <select data-setting="fps_limit">
-            <option value="24">24 fps</option>
-            <option value="30">30 fps</option>
-            <option value="60">60 fps</option>
-            <option value="120">120 fps</option>
-            <option value="0">Unlimited</option>
-          </select>
-        </label>
-        <button id="reapply" class="btn ghost full">Re-attach to desktop</button>
-      </section>
-    </aside>
-  </main>
+  <div id="drop-overlay" hidden><div class="drop-card"><span class="ico big" data-icon="download"></span><p data-i18n="lib.dropHint"></p></div></div>
+  <div id="toast" hidden></div>
+  <div id="modal-root"></div>
+  <div id="onboarding" hidden></div>
 
-  <div id="toast" class="toast" hidden></div>
+  <script src="i18n.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

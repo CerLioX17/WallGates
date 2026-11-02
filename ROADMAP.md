@@ -1,25 +1,29 @@
 # Roadmap
 
-## v0.2: daily-driver quality
-- [ ] Start with Windows (autostart toggle)
-- [ ] Recover automatically after an Explorer restart or monitor change (listen for `TaskbarCreated` / display changes)
-- [ ] A different wallpaper per monitor
-- [ ] Playlists: rotate wallpapers on a timer or by time of day
-- [ ] Per-wallpaper volume with a global mute
-- [ ] Render-scale option (e.g. 50%) for heavy shaders on 4K screens
+## ✅ v0.2 — "A real engine"
+Per-display wallpapers & span mode, stable monitor identity, Explorer/monitor watchdog, playlists
+(interval, shuffle, time of day, sunrise/sunset), crossfade transitions, pause/eco/unload rules
+(fullscreen incl. borderless, maximized, battery, per-app), render quality & frame cap, audio
+spectrum, cursor, now playing, CPU/RAM, weather, live code editor, `.wallgates` packages,
+curated gallery, Wallpaper Engine video/web import with compatibility layer, lock screen & desktop
+sync, global shortcuts, autostart, English/Italian UI, new brand and installers.
 
-## v0.3: interactive wallpapers
-- [ ] Mouse position for shaders (`iMouse`) and HTML (low-level mouse hook on Windows)
-- [ ] Audio-reactive wallpapers (system audio spectrum via WASAPI loopback)
-- [ ] System data for HTML wallpapers: CPU/RAM, weather, media now-playing (opt-in permissions)
-- [ ] Shader textures / multi-pass buffers
+## v0.3 — Trust & reach
+- [ ] Signed releases (SignPath / Certum) and Microsoft Store listing — see [docs/distribution.md](docs/distribution.md)
+- [ ] winget package
+- [ ] In-app updater (signed)
+- [ ] More languages (community translations)
+- [ ] Per-wallpaper resource usage display ("cost" badge)
 
-## v0.4: platforms
-- [ ] Linux auto-pause (X11 `_NET_WM_STATE_FULLSCREEN`)
-- [ ] Wayland via wlr-layer-shell (KDE, Hyprland, Sway)
-- [ ] macOS: window at desktop level, behind icons
+## v0.4 — Creators
+- [ ] Visual property editor in Create (no JSON)
+- [ ] Shader textures & multi-pass buffers
+- [ ] Particle/scene layer system for no-code animated wallpapers
+- [ ] Gallery submissions from the app (review queue on GitHub)
+- [ ] Creator tips / revenue share for gallery items
 
-## Ecosystem
-- [ ] Online gallery to browse and install community wallpapers
-- [ ] Wallpaper editor: live-edit shaders and HTML with instant preview
-- [ ] Signed releases and auto-update
+## v0.5 — Platforms
+- [ ] Linux: fullscreen auto-pause, PipeWire audio, MPRIS media
+- [ ] Wayland via wlr-layer-shell (KDE, Hyprland, Sway) and a GNOME extension
+- [ ] macOS: desktop-level window behind icons
+- [ ] Per-virtual-desktop wallpapers (Windows)

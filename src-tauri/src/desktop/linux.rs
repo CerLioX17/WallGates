@@ -2,11 +2,18 @@
 //! everything and is skipped by taskbars. Wayland compositors generally ignore
 //! this hint; proper Wayland support needs wlr-layer-shell (see ROADMAP).
 
-use super::{PauseRules, Rect};
+use super::{Observation, Rect};
 use gtk::prelude::*;
 use tauri::{PhysicalPosition, PhysicalSize, WebviewWindow};
 
-pub fn attach(window: &WebviewWindow, rect: Rect) -> Result<String, String> {
+#[derive(Clone, Debug, Default)]
+pub struct Handle;
+
+pub fn stable_monitor_id(device: &str) -> String {
+    device.to_string()
+}
+
+pub fn attach(window: &WebviewWindow, rect: Rect) -> Result<(Handle, String), String> {
     window
         .set_position(PhysicalPosition::new(rect.x, rect.y))
         .map_err(|e| e.to_string())?;
@@ -29,12 +36,28 @@ pub fn attach(window: &WebviewWindow, rect: Rect) -> Result<String, String> {
             let _ = w.show();
         })
         .map_err(|e| e.to_string())?;
-    Ok("strategy: X11 _NET_WM_WINDOW_TYPE_DESKTOP".into())
+    Ok((Handle, "strategy: X11 _NET_WM_WINDOW_TYPE_DESKTOP".into()))
 }
 
-pub fn should_auto_pause(_rules: PauseRules) -> bool {
-    // TODO: detect fullscreen windows via _NET_ACTIVE_WINDOW / _NET_WM_STATE_FULLSCREEN.
-    false
+pub fn is_attached(_h: &Handle) -> bool {
+    true
+}
+
+pub fn observe() -> Observation {
+    // TODO: _NET_ACTIVE_WINDOW / _NET_WM_STATE_FULLSCREEN and UPower battery state.
+    Observation { desktop_focused: true, ..Default::default() }
+}
+
+pub fn cursor() -> Option<(i32, i32)> {
+    None
+}
+
+pub fn set_static_wallpaper(_path: &std::path::Path) -> Result<(), String> {
+    Err("not supported on this platform yet".into())
+}
+
+pub fn set_lock_screen(_path: &std::path::Path) -> Result<(), String> {
+    Err("not supported on this platform yet".into())
 }
 
 pub fn restore() {}

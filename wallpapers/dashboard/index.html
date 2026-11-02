@@ -1,0 +1,137 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="/__wallgates/wallgates-sdk.js"></script>
+<style>
+  :root { --accent: #8b5cf6; --glass: rgba(18, 16, 34, 0.48); --line: rgba(255, 255, 255, 0.09); }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body {
+    font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif; color: #f2f3ff;
+    background: #07070e; display: grid; grid-template-columns: 1fr minmax(320px, 26vw); gap: 3vw; padding: 6vh 5vw;
+  }
+  #bg { position: fixed; inset: -10%; z-index: -1; transition: opacity 1.2s; }
+  #bg.aurora { background:
+      radial-gradient(45% 55% at 20% 30%, color-mix(in srgb, var(--accent) 55%, transparent), transparent 70%),
+      radial-gradient(40% 50% at 80% 70%, rgba(34, 211, 238, 0.35), transparent 70%),
+      radial-gradient(35% 45% at 60% 20%, rgba(236, 72, 153, 0.28), transparent 70%), #07070e;
+    animation: drift 40s ease-in-out infinite alternate; filter: blur(30px); }
+  #bg.night { background: radial-gradient(60% 60% at 30% 100%, color-mix(in srgb, var(--accent) 22%, transparent), transparent), #05050a; }
+  #bg.album { background-size: cover; background-position: center; filter: blur(60px) saturate(1.4) brightness(0.55); }
+  body.paused #bg { animation-play-state: paused; }
+  @keyframes drift { from { transform: translate(-2%, -1%) rotate(0deg) scale(1.05); } to { transform: translate(2%, 2%) rotate(4deg) scale(1.12); } }
+
+  .left { display: flex; flex-direction: column; justify-content: flex-end; }
+  #greeting { font-size: 1.6vw; opacity: 0.75; margin-bottom: 0.4em; min-height: 1em; }
+  #time { font-size: 9.5vw; font-weight: 200; line-height: 0.95; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; }
+  #date { font-size: 1.7vw; opacity: 0.7; margin-top: 0.6em; text-transform: capitalize; }
+
+  .cards { display: flex; flex-direction: column; justify-content: flex-end; gap: 1.4vw; }
+  .card { background: var(--glass); border: 1px solid var(--line); border-radius: 22px; padding: 1.3vw 1.5vw;
+          backdrop-filter: blur(24px) saturate(1.3); box-shadow: 0 20px 50px -25px rgba(0, 0, 0, 0.8); }
+  .card[hidden] { display: none; }
+  .label { font-size: 0.72vw; letter-spacing: 0.16em; text-transform: uppercase; opacity: 0.55; margin-bottom: 0.7vw; display: flex; justify-content: space-between; }
+  .wx { display: flex; align-items: center; gap: 1.2vw; }
+  .wx .icon { font-size: 3.4vw; line-height: 1; }
+  .wx .temp { font-size: 3vw; font-weight: 300; }
+  .wx .desc { opacity: 0.75; font-size: 0.95vw; }
+  .media { display: flex; gap: 1vw; align-items: center; }
+  .media .art { width: 4.6vw; height: 4.6vw; border-radius: 12px; background: linear-gradient(135deg, var(--accent), #22d3ee); background-size: cover; background-position: center; flex: none; }
+  .media .title { font-size: 1.1vw; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .media .artist { opacity: 0.7; font-size: 0.95vw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .media .meta { min-width: 0; }
+  .eq { display: inline-flex; gap: 2px; align-items: flex-end; height: 0.8vw; }
+  .eq i { width: 3px; background: var(--accent); animation: eq 0.9s ease-in-out infinite; }
+  .eq i:nth-child(2) { animation-delay: -0.3s; } .eq i:nth-child(3) { animation-delay: -0.6s; }
+  .eq.off i { animation: none; height: 20%; }
+  body.paused .eq i { animation-play-state: paused; }
+  @keyframes eq { 0%, 100% { height: 20%; } 50% { height: 100%; } }
+  .meter { margin-top: 0.6vw; }
+  .meter .row { display: flex; justify-content: space-between; font-size: 0.9vw; opacity: 0.85; }
+  .bar { height: 6px; border-radius: 6px; background: rgba(255, 255, 255, 0.08); overflow: hidden; margin-top: 0.35vw; }
+  .bar > div { height: 100%; width: 0; border-radius: 6px; background: linear-gradient(90deg, #22d3ee, var(--accent)); transition: width 0.8s ease; }
+  .hint { opacity: 0.55; font-size: 0.9vw; }
+</style>
+</head>
+<body>
+  <div id="bg" class="aurora"></div>
+  <section class="left">
+    <div id="greeting"></div>
+    <div id="time"></div>
+    <div id="date"></div>
+  </section>
+  <section class="cards">
+    <div class="card" id="weatherCard">
+      <div class="label"><span>Weather</span><span id="wxPlace"></span></div>
+      <div class="wx"><div class="icon" id="wxIcon">⛅</div><div><div class="temp" id="wxTemp">--°</div><div class="desc" id="wxDesc"></div></div></div>
+      <div class="hint" id="wxHint">Turn on weather and pick your city in Wallgates → Settings.</div>
+    </div>
+    <div class="card" id="mediaCard">
+      <div class="label"><span>Now playing</span><span class="eq off" id="eq"><i></i><i></i><i></i></span></div>
+      <div class="media"><div class="art" id="art"></div>
+        <div class="meta"><div class="title" id="title">Nothing playing</div><div class="artist" id="artist">Play something on Spotify, YouTube…</div></div></div>
+    </div>
+    <div class="card" id="systemCard">
+      <div class="label"><span>System</span></div>
+      <div class="meter"><div class="row"><span>CPU</span><span id="cpuV">–</span></div><div class="bar"><div id="cpuB"></div></div></div>
+      <div class="meter"><div class="row"><span>Memory</span><span id="memV">–</span></div><div class="bar"><div id="memB"></div></div></div>
+    </div>
+  </section>
+<script>
+// Dashboard — Wallgates built-in wallpaper (CC BY 4.0). Uses the Wallgates SDK.
+const $ = (id) => document.getElementById(id);
+let o = {};
+let lastArt = null;
+const ICON = { clear: ['☀️', '🌙'], cloudy: ['⛅', '☁️'], fog: ['🌫️', '🌫️'], rain: ['🌧️', '🌧️'], snow: ['🌨️', '🌨️'], storm: ['⛈️', '⛈️'], unknown: ['🌡️', '🌡️'] };
+
+function tick() {
+  const now = new Date();
+  $('time').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: o.seconds ? '2-digit' : undefined, hour12: !o.format24 });
+  $('date').textContent = now.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' });
+}
+let timer = setInterval(tick, 1000);
+
+Wallgates.on('properties', (v) => {
+  o = v;
+  document.documentElement.style.setProperty('--accent', v.accent || '#8b5cf6');
+  $('bg').className = v.background === 'album' && lastArt ? 'album' : v.background === 'night' ? 'night' : 'aurora';
+  $('greeting').textContent = v.greeting || '';
+  $('weatherCard').hidden = !v.showWeather;
+  $('mediaCard').hidden = !v.showMedia;
+  $('systemCard').hidden = !v.showSystem;
+  tick();
+});
+Wallgates.on('pause', (p) => {
+  document.body.classList.toggle('paused', p);
+  clearInterval(timer);
+  timer = setInterval(tick, p ? 15000 : 1000);
+});
+Wallgates.on('weather', (w) => {
+  $('wxHint').hidden = true;
+  $('wxTemp').textContent = `${Math.round(w.temperature)}${w.units || '°'}`;
+  $('wxDesc').textContent = `${w.description} · ${Math.round(w.low)}° / ${Math.round(w.high)}°`;
+  $('wxPlace').textContent = (w.location || '').split(',')[0];
+  $('wxIcon').textContent = (ICON[w.condition] || ICON.unknown)[w.isDay ? 0 : 1];
+});
+Wallgates.on('media', (m) => {
+  $('title').textContent = m.title || 'Nothing playing';
+  $('artist').textContent = m.title ? (m.artist || '') : 'Play something on Spotify, YouTube…';
+  $('eq').classList.toggle('off', !m.playing);
+  lastArt = m.thumbnail || null;
+  $('art').style.backgroundImage = lastArt ? `url("${lastArt}")` : '';
+  if (o.background === 'album') {
+    $('bg').className = lastArt ? 'album' : 'aurora';
+    $('bg').style.backgroundImage = lastArt ? `url("${lastArt}")` : '';
+  }
+});
+Wallgates.on('system', (s) => {
+  $('cpuV').textContent = `${Math.round(s.cpu)}%`;
+  $('cpuB').style.width = `${Math.min(100, s.cpu)}%`;
+  $('memV').textContent = `${Math.round(s.memory)}% · ${(s.memoryUsed / 1073741824).toFixed(1)} GB`;
+  $('memB').style.width = `${Math.min(100, s.memory)}%`;
+});
+tick();
+</script>
+</body>
+</html>

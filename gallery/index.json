@@ -1,0 +1,75 @@
+{
+  "version": 1,
+  "items": [
+    {
+      "id": "hyperspace",
+      "name": "Hyperspace",
+      "author": "Wallgates",
+      "description": "A warp-speed starfield. Turn up your music and jump.",
+      "type": "shader",
+      "preview": "preview.jpg",
+      "license": "CC-BY-4.0",
+      "tags": [
+        "space",
+        "stars",
+        "audio"
+      ],
+      "capabilities": [
+        "audio",
+        "mouse"
+      ],
+      "files": [
+        "wallpaper.json",
+        "hyperspace.frag",
+        "preview.jpg"
+      ],
+      "size": 11393
+    },
+    {
+      "id": "ocean-night",
+      "name": "Ocean Night",
+      "author": "Wallgates",
+      "description": "Moonlight over a slow, endless ocean. Perfect for focus.",
+      "type": "shader",
+      "preview": "preview.jpg",
+      "license": "CC-BY-4.0",
+      "tags": [
+        "ocean",
+        "calm",
+        "night",
+        "moon"
+      ],
+      "capabilities": [],
+      "files": [
+        "wallpaper.json",
+        "ocean.frag",
+        "preview.jpg"
+      ],
+      "size": 13215
+    },
+    {
+      "id": "synthwave",
+      "name": "Synthwave",
+      "author": "Wallgates",
+      "description": "Retro sun, neon grid and endless highway. The grid pulses with the bass.",
+      "type": "shader",
+      "preview": "preview.jpg",
+      "license": "CC-BY-4.0",
+      "tags": [
+        "retro",
+        "80s",
+        "neon",
+        "audio"
+      ],
+      "capabilities": [
+        "audio"
+      ],
+      "files": [
+        "wallpaper.json",
+        "preview.jpg",
+        "synthwave.frag"
+      ],
+      "size": 30579
+    }
+  ]
+}

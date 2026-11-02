@@ -1,6 +1,9 @@
-// Wallpaper host: runs in each per-monitor desktop window and renders the
-// active wallpaper (image / video / html / shader). Third-party HTML runs in a
-// sandboxed iframe without access to Tauri IPC; it receives properties via postMessage.
+// Wallgates wallpaper host: runs in each desktop window and renders the
+// assigned wallpaper (image / video / html / shader).
+//
+// Third-party HTML runs in a sandboxed iframe (no IPC, opaque origin, offline
+// unless it declares "network"); it receives properties and live data via
+// postMessage. Live data is only forwarded for capabilities the wallpaper declares.
 'use strict';
 
 const { invoke } = window.__TAURI__.core;
@@ -22,30 +25,40 @@ function showError(message) {
 
 const FITS = new Set(['cover', 'contain', 'fill']);
 const fitOf = (values) => (FITS.has(values.fit) ? values.fit : 'cover');
+const clamp01 = (v) => Math.min(1, Math.max(0, Number(v) || 0));
+
+// Live data shared by all renderers.
+const live = {
+  audio: new Float32Array(64),
+  level: 0,
+  mouse: { x: 0.5, y: 0.5, inside: false, desktop: false },
+};
 
 // ------------------------------------------------------------------ renderers
-// Each renderer: { update(values), setPaused(bool), setFps(n), destroy() }
+// Each renderer: { update(state), setPaused(bool), capture()?, deliver(event, data)?, destroy() }
 
-function imageRenderer(wallpaper, values) {
+function imageRenderer(layer, w, state) {
   const img = document.createElement('img');
-  img.src = fileUrl(wallpaper, wallpaper.manifest.entry);
+  img.crossOrigin = 'anonymous';
+  img.src = fileUrl(w, w.manifest.entry);
   img.alt = '';
-  stage.append(img);
+  layer.append(img);
   const r = {
-    update(v) { img.style.objectFit = fitOf(v); },
+    ready: new Promise((res) => { img.onload = res; img.onerror = res; }),
+    update(s) { img.style.objectFit = fitOf(s.values); },
     setPaused() {},
-    setFps() {},
-    destroy() { img.remove(); },
+    destroy() {},
   };
-  r.update(values);
+  r.update(state);
   return r;
 }
 
-function videoRenderer(wallpaper, values) {
+function videoRenderer(layer, w, state) {
   const video = document.createElement('video');
-  Object.assign(video, { loop: true, muted: true, autoplay: true, playsInline: true });
-  video.src = fileUrl(wallpaper, wallpaper.manifest.entry);
-  stage.append(video);
+  video.crossOrigin = 'anonymous';
+  Object.assign(video, { loop: true, muted: true, autoplay: true, playsInline: true, preload: 'auto' });
+  video.src = fileUrl(w, w.manifest.entry);
+  layer.append(video);
   let paused = false;
 
   const play = () => {
@@ -58,41 +71,87 @@ function videoRenderer(wallpaper, values) {
   };
 
   const r = {
-    update(v) {
-      video.style.objectFit = fitOf(v);
-      const speed = Number(v.speed);
+    ready: new Promise((res) => {
+      video.addEventListener('loadeddata', res, { once: true });
+      video.addEventListener('error', res, { once: true });
+      setTimeout(res, 4000);
+    }),
+    update(s) {
+      video.style.objectFit = fitOf(s.values);
+      const speed = Number(s.values.speed);
       video.playbackRate = speed > 0 ? speed : 1;
-      const volume = Math.min(1, Math.max(0, Number(v.volume) || 0));
+      const volume = clamp01(s.values.volume) * clamp01(s.volume);
       video.volume = volume;
-      video.muted = volume === 0;
+      video.muted = s.muted || volume === 0;
       play();
     },
     setPaused(p) { paused = p; p ? video.pause() : play(); },
-    setFps() {},
-    destroy() { video.pause(); video.removeAttribute('src'); video.load(); video.remove(); },
+    capture() {
+      const c = document.createElement('canvas');
+      c.width = video.videoWidth || innerWidth;
+      c.height = video.videoHeight || innerHeight;
+      c.getContext('2d').drawImage(video, 0, 0, c.width, c.height);
+      return c.toDataURL('image/png');
+    },
+    destroy() { video.pause(); video.removeAttribute('src'); video.load(); },
   };
-  r.update(values);
+  r.update(state);
   return r;
 }
 
-function htmlRenderer(wallpaper, values, paused) {
+function htmlRenderer(layer, w, state) {
   const frame = document.createElement('iframe');
   // allow-scripts without allow-same-origin: opaque origin, no IPC, no storage of ours.
   frame.setAttribute('sandbox', 'allow-scripts');
   frame.setAttribute('allow', 'autoplay');
-  frame.src = fileUrl(wallpaper, wallpaper.manifest.entry);
-  stage.append(frame);
+  frame.src = fileUrl(w, w.manifest.entry);
+  layer.append(frame);
 
-  let state = { values, paused };
-  const post = (event) =>
-    frame.contentWindow?.postMessage({ type: 'wallgates', event, ...state }, '*');
-  frame.addEventListener('load', () => post('init'));
+  let current = state;
+  const caps = new Set(w.manifest.capabilities || []);
+  const base = () => ({
+    type: 'wallgates',
+    values: current.values,
+    paused: current.paused,
+    renderScale: current.render_scale,
+    fps: current.fps_limit || 60,
+    muted: current.muted,
+    volume: current.volume,
+    monitor: { index: current.index, width: current.width, height: current.height, span: current.span },
+  });
+  const post = (msg) => frame.contentWindow?.postMessage(msg, '*');
+
+  const ready = new Promise((res) => {
+    frame.addEventListener('load', async () => {
+      post({ ...base(), event: 'init' });
+      // Replay cached feeds so dashboards are filled immediately.
+      try {
+        const snap = await invoke('feed_snapshot');
+        for (const [kind, data] of Object.entries(snap)) if (caps.has(kind)) post({ type: 'wallgates', event: kind, ...data });
+      } catch (_) { /* ignore */ }
+      res();
+    }, { once: true });
+    setTimeout(res, 5000);
+  });
 
   return {
-    update(v) { state.values = v; post('properties'); },
-    setPaused(p) { state.paused = p; post('pause'); },
-    setFps() {},
-    destroy() { frame.remove(); },
+    ready,
+    update(s) { current = s; post({ ...base(), event: 'properties' }); },
+    setPaused(p) { current = { ...current, paused: p }; post({ ...base(), event: 'pause' }); },
+    deliver(event, data) { if (caps.has(event)) post({ type: 'wallgates', event, ...data }); },
+    capture: async () => {
+      // Cross-origin iframe pixels can't be read: use the preview image instead.
+      if (!w.manifest.preview) return null;
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.src = fileUrl(w, w.manifest.preview);
+      await img.decode();
+      const c = document.createElement('canvas');
+      c.width = img.naturalWidth; c.height = img.naturalHeight;
+      c.getContext('2d').drawImage(img, 0, 0);
+      return c.toDataURL('image/png');
+    },
+    destroy() { frame.src = 'about:blank'; },
   };
 }
 
@@ -134,17 +193,17 @@ function shaderUniforms(properties) {
   return out;
 }
 
-async function shaderRenderer(wallpaper, values, paused, fps) {
-  const res = await fetch(fileUrl(wallpaper, wallpaper.manifest.entry));
+async function shaderRenderer(layer, w, state) {
+  const res = await fetch(fileUrl(w, w.manifest.entry));
   if (!res.ok) throw new Error(`cannot load shader (${res.status})`);
   const source = await res.text();
 
   const canvas = document.createElement('canvas');
-  stage.append(canvas);
-  const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, powerPreference: 'low-power' });
+  layer.append(canvas);
+  const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, powerPreference: 'low-power', preserveDrawingBuffer: false });
   if (!gl) throw new Error('WebGL2 is not available');
 
-  const uniforms = shaderUniforms(wallpaper.manifest.properties);
+  const uniforms = shaderUniforms(w.manifest.properties);
   const fragment = [
     '#version 300 es',
     'precision highp float;',
@@ -153,6 +212,8 @@ async function shaderRenderer(wallpaper, values, paused, fps) {
     'uniform float iTimeDelta;',
     'uniform int iFrame;',
     'uniform vec4 iMouse;',
+    'uniform float iAudio[64];',
+    'uniform float iAudioLevel;',
     ...uniforms.map((u) => u.decl),
     'out vec4 wf_FragColor;',
     '#line 1',
@@ -183,31 +244,36 @@ async function shaderRenderer(wallpaper, values, paused, fps) {
   gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
 
   const loc = (n) => gl.getUniformLocation(program, n);
-  const uRes = loc('iResolution'), uTime = loc('iTime'), uDelta = loc('iTimeDelta'), uFrame = loc('iFrame'), uMouse = loc('iMouse');
-  gl.uniform4f(uMouse, 0, 0, 0, 0);
-  const propLocs = uniforms.map((u) => ({ ...u, loc: loc(u.name) })).filter((u) => u.loc);
+  const u = {
+    res: loc('iResolution'), time: loc('iTime'), delta: loc('iTimeDelta'), frame: loc('iFrame'),
+    mouse: loc('iMouse'), audio: loc('iAudio'), level: loc('iAudioLevel'),
+  };
+  const propLocs = uniforms.map((x) => ({ ...x, loc: loc(x.name) })).filter((x) => x.loc);
 
-  let currentValues = values;
-  let fpsLimit = fps;
+  let current = state;
   let time = 0, frame = 0, last = 0, lastDraw = 0, raf = 0, running = false;
 
-  const applyValues = () => propLocs.forEach((u) => u.set(gl, u.loc, currentValues[u.key]));
+  const applyValues = () => propLocs.forEach((x) => x.set(gl, x.loc, current.values[x.key]));
 
   const resize = () => {
-    const dpr = window.devicePixelRatio || 1;
-    const w = Math.max(1, Math.round(innerWidth * dpr)), h = Math.max(1, Math.round(innerHeight * dpr));
-    if (canvas.width !== w || canvas.height !== h) {
-      canvas.width = w; canvas.height = h;
-      gl.viewport(0, 0, w, h);
+    const scale = Math.min(1, Math.max(0.25, Number(current.render_scale) || 1));
+    const dpr = (window.devicePixelRatio || 1) * scale;
+    const cw = Math.max(1, Math.round(innerWidth * dpr)), ch = Math.max(1, Math.round(innerHeight * dpr));
+    if (canvas.width !== cw || canvas.height !== ch) {
+      canvas.width = cw; canvas.height = ch;
+      gl.viewport(0, 0, cw, ch);
     }
-    gl.uniform3f(uRes, canvas.width, canvas.height, 1);
+    gl.uniform3f(u.res, canvas.width, canvas.height, 1);
   };
 
   const draw = (dt) => {
     resize();
-    gl.uniform1f(uTime, time);
-    gl.uniform1f(uDelta, dt);
-    gl.uniform1i(uFrame, frame++);
+    gl.uniform1f(u.time, time);
+    gl.uniform1f(u.delta, dt);
+    gl.uniform1i(u.frame, frame++);
+    if (u.audio) gl.uniform1fv(u.audio, live.audio);
+    if (u.level) gl.uniform1f(u.level, live.level);
+    if (u.mouse) gl.uniform4f(u.mouse, live.mouse.x * canvas.width, (1 - live.mouse.y) * canvas.height, 0, 0);
     gl.drawArrays(gl.TRIANGLES, 0, 3);
   };
 
@@ -216,8 +282,9 @@ async function shaderRenderer(wallpaper, values, paused, fps) {
     const dt = last ? Math.min((now - last) / 1000, 0.25) : 0;
     last = now;
     time += dt;
-    if (fpsLimit > 0 && now - lastDraw < 1000 / fpsLimit - 2) return;
-    draw(now - lastDraw > 0 && lastDraw ? (now - lastDraw) / 1000 : dt);
+    const fps = current.fps_limit;
+    if (fps > 0 && now - lastDraw < 1000 / fps - 2) return;
+    draw(lastDraw ? Math.min((now - lastDraw) / 1000, 0.25) : dt);
     lastDraw = now;
   };
 
@@ -227,63 +294,111 @@ async function shaderRenderer(wallpaper, values, paused, fps) {
   addEventListener('resize', resize);
   applyValues();
   draw(0);
-  if (!paused) start();
+  if (!state.paused) start();
 
   return {
-    update(v) { currentValues = v; applyValues(); draw(0); }, // instant feedback, even while paused
+    ready: Promise.resolve(),
+    update(s) { current = s; applyValues(); draw(0); }, // instant feedback, even while paused
     setPaused(p) { p ? stop() : start(); },
-    setFps(n) { fpsLimit = n; },
+    capture() { draw(0); return canvas.toDataURL('image/png'); },
     destroy() {
       stop();
       removeEventListener('resize', resize);
       gl.getExtension('WEBGL_lose_context')?.loseContext();
-      canvas.remove();
     },
   };
 }
 
-// ------------------------------------------------------------------ state
+// ------------------------------------------------------------------ layers & transitions
 
-let renderer = null;
-let currentKey = null;
+let active = null; // { key, layer, renderer, wallpaper }
 let pending = Promise.resolve();
 
-function keyOf(state) {
-  const w = state.wallpaper;
-  return w ? `${w.id}|${w.manifest.type}|${w.manifest.entry}` : null;
+function keyOf(s) {
+  const w = s.wallpaper;
+  return w && !s.stopped ? `${w.id}|${w.manifest.type}|${w.manifest.entry}|${s.revision}` : null;
 }
 
-async function apply(state) {
-  const key = keyOf(state);
-  if (key !== currentKey) {
-    renderer?.destroy();
-    renderer = null;
-    stage.replaceChildren();
+async function createLayer(s) {
+  const w = s.wallpaper;
+  const layer = document.createElement('div');
+  layer.className = 'layer';
+  stage.append(layer);
+  let renderer;
+  switch (w.manifest.type) {
+    case 'image': renderer = imageRenderer(layer, w, s); break;
+    case 'video': renderer = videoRenderer(layer, w, s); break;
+    case 'html': renderer = htmlRenderer(layer, w, s); break;
+    case 'shader': renderer = await shaderRenderer(layer, w, s); break;
+    default: throw new Error(`unknown wallpaper type: ${w.manifest.type}`);
+  }
+  return { layer, renderer };
+}
+
+function retire(entry, delay) {
+  if (!entry) return;
+  setTimeout(() => {
+    try { entry.renderer?.destroy(); } catch (_) { /* ignore */ }
+    entry.layer.remove();
+  }, delay);
+}
+
+async function apply(s) {
+  const key = keyOf(s);
+  if (key !== (active?.key ?? null)) {
+    const previous = active;
+    active = null;
     showError('');
-    currentKey = key;
-    const w = state.wallpaper;
-    if (!w) return;
-    try {
-      switch (w.manifest.type) {
-        case 'image': renderer = imageRenderer(w, state.values); break;
-        case 'video': renderer = videoRenderer(w, state.values); break;
-        case 'html': renderer = htmlRenderer(w, state.values, state.paused); break;
-        case 'shader': renderer = await shaderRenderer(w, state.values, state.paused, state.fps_limit); break;
-        default: throw new Error(`unknown wallpaper type: ${w.manifest.type}`);
-      }
-    } catch (e) {
-      showError(`${w.manifest.name}: ${e.message || e}`);
+    if (!key) {
+      // Stopped (frees GPU memory) or nothing assigned.
+      retire(previous, 0);
       return;
     }
-  } else if (renderer) {
-    renderer.update(state.values);
+    let created;
+    try {
+      created = await createLayer(s);
+      invoke('report_error', { id: s.wallpaper.id, message: '' }).catch(() => {});
+    } catch (e) {
+      const message = String(e.message || e);
+      showError(`${s.wallpaper.manifest.name}: ${message}`);
+      invoke('report_error', { id: s.wallpaper.id, message }).catch(() => {});
+      stage.querySelectorAll('.layer:empty').forEach((l) => l.remove());
+      active = previous; // keep showing the old wallpaper
+      return;
+    }
+    active = { key, wallpaper: s.wallpaper, ...created };
+    await Promise.race([created.renderer.ready, new Promise((r) => setTimeout(r, 3000))]);
+    const ms = previous ? Math.max(0, s.transition_ms | 0) : 0;
+    created.layer.style.transition = `opacity ${ms}ms ease`;
+    requestAnimationFrame(() => { created.layer.style.opacity = '1'; });
+    retire(previous, ms + 50);
+  } else if (active) {
+    active.renderer.update(s);
   }
-  renderer?.setFps(state.fps_limit);
-  renderer?.setPaused(state.paused);
+  active?.renderer.setPaused(s.paused);
 }
 
-// Serialize updates so async shader loading never races a newer state.
-const enqueue = (state) => { pending = pending.then(() => apply(state)).catch(console.error); };
+// Serialize updates so async loading never races a newer state.
+const enqueue = (s) => { if (s) pending = pending.then(() => apply(s)).catch(console.error); };
 
-listen('wf-state', (event) => enqueue(event.payload));
+listen('wf-state', (e) => enqueue(e.payload));
+listen('wf-audio', (e) => {
+  const { bands, level } = e.payload;
+  for (let i = 0; i < 64; i++) live.audio[i] = bands[i] || 0;
+  live.level = level || 0;
+  active?.renderer.deliver?.('audio', { bands, level });
+});
+listen('wf-mouse', (e) => {
+  live.mouse = e.payload;
+  active?.renderer.deliver?.('mouse', e.payload);
+});
+listen('wf-feed', (e) => active?.renderer.deliver?.(e.payload.kind, e.payload.data));
+listen('wf-capture', async () => {
+  try {
+    const data = await active?.renderer.capture?.();
+    if (data) await invoke('submit_frame', { data });
+  } catch (err) {
+    console.warn('capture failed', err);
+  }
+});
 invoke('host_state').then(enqueue);

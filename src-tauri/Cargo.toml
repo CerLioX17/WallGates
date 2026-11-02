@@ -1,6 +1,6 @@
 [package]
 name = "wallgates"
-version = "0.1.0"
+version = "0.2.0"
 description = "Open-source, fully customizable live wallpaper engine"
 authors = ["Wallgates contributors"]
 license = "GPL-3.0-or-later"
@@ -21,12 +21,31 @@ tauri-plugin-single-instance = "2"
 serde = { version = "1", features = ["derive"] }
 serde_json = { version = "1", features = ["preserve_order"] }
 percent-encoding = "2"
+tauri-plugin-autostart = "2"
+tauri-plugin-global-shortcut = "2"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+ureq = { version = "2", default-features = false, features = ["json", "native-tls"] }
+native-tls = "0.2"
+sysinfo = { version = "0.35", default-features = false, features = ["system"] }
+base64 = "0.22"
+sys-locale = "0.3"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 
 [target.'cfg(windows)'.dependencies]
+cpal = "0.15"
+rustfft = "6"
 windows = { version = "0.61", features = [
+  "Foundation",
+  "Media_Control",
+  "Storage",
+  "Storage_Streams",
+  "System_UserProfile",
   "Win32_Foundation",
+  "Win32_Graphics_Dwm",
   "Win32_Graphics_Gdi",
   "Win32_System_Power",
+  "Win32_System_Threading",
+  "Win32_UI_Shell",
   "Win32_UI_WindowsAndMessaging",
 ] }
 

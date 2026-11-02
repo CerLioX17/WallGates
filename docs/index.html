@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Wallgates — open-source live wallpaper engine</title>
+<meta name="description" content="Free, open-source live wallpapers for Windows: shaders, web, video. No Steam, no account, no telemetry. Import your Wallpaper Engine wallpapers.">
+<meta property="og:title" content="Wallgates — live wallpapers, open to everyone">
+<meta property="og:description" content="Free, open-source live wallpaper engine for Windows.">
+<meta property="og:image" content="assets/social-preview.png">
+<link rel="icon" href="assets/icon-256.png">
+<style>
+  @font-face { font-family: "Sora"; src: url("assets/Sora.ttf") format("truetype"); font-weight: 100 800; font-display: swap; }
+  :root {
+    --night: #08080f; --surface: #13121f; --border: #2a2840; --text: #eef0ff; --muted: #9195b5;
+    --cyan: #22d3ee; --violet: #8b5cf6; --magenta: #ec4899;
+    --gate: linear-gradient(120deg, var(--cyan), var(--violet) 55%, var(--magenta));
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body { margin: 0; background: var(--night); color: var(--text); font: 16px/1.6 "Segoe UI", system-ui, -apple-system, sans-serif; }
+  h1, h2, h3 { font-family: "Sora", system-ui, sans-serif; letter-spacing: -0.02em; margin: 0; }
+  a { color: inherit; }
+  .wrap { width: min(1160px, 100% - 32px); margin: 0 auto; }
+  .grad { background: var(--gate); -webkit-background-clip: text; background-clip: text; color: transparent; }
+
+  nav { position: fixed; inset: 0 0 auto 0; z-index: 10; backdrop-filter: blur(14px); background: rgba(8, 8, 15, 0.55); border-bottom: 1px solid rgba(255,255,255,0.06); }
+  nav .wrap { display: flex; align-items: center; gap: 22px; height: 64px; }
+  nav .brand { display: flex; align-items: center; gap: 10px; font: 650 18px "Sora", sans-serif; text-decoration: none; }
+  nav .brand img { width: 30px; height: 30px; border-radius: 8px; }
+  nav .links { margin-left: auto; display: flex; gap: 22px; color: var(--muted); font-size: 15px; }
+  nav .links a { text-decoration: none; }
+  nav .links a:hover { color: var(--text); }
+
+  .btn { display: inline-flex; align-items: center; gap: 10px; padding: 13px 22px; border-radius: 12px; font: 600 16px "Sora", sans-serif; text-decoration: none; border: 1px solid var(--border); background: rgba(19, 18, 31, 0.7); }
+  .btn.primary { background: var(--gate); border-color: transparent; color: #fff; box-shadow: 0 14px 40px -12px rgba(139, 92, 246, 0.8); }
+  .btn:hover { filter: brightness(1.1); }
+
+  header.hero { position: relative; min-height: 100vh; display: flex; align-items: center; overflow: hidden; }
+  #bg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+  .hero::after { content: ""; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(8,8,15,0.15), rgba(8,8,15,0.35) 60%, var(--night)); pointer-events: none; }
+  .hero .wrap { position: relative; z-index: 1; padding: 120px 0 80px; }
+  .hero h1 { font-size: clamp(42px, 7vw, 86px); line-height: 1.02; font-weight: 700; max-width: 900px; }
+  .hero p.lead { font-size: clamp(17px, 2vw, 21px); color: #c9cbe6; max-width: 640px; margin: 22px 0 34px; }
+  .hero .cta { display: flex; gap: 14px; flex-wrap: wrap; }
+  .hero .small { margin-top: 18px; color: var(--muted); font-size: 14px; }
+
+  section { padding: 90px 0; }
+  .eyebrow { font: 600 13px "Sora", sans-serif; letter-spacing: 0.18em; text-transform: uppercase; color: var(--violet); margin-bottom: 12px; }
+  section h2 { font-size: clamp(30px, 4vw, 46px); max-width: 760px; }
+  section p.sub { color: var(--muted); max-width: 640px; font-size: 18px; }
+
+  .shot { margin-top: 40px; border-radius: 20px; overflow: hidden; border: 1px solid var(--border); box-shadow: 0 40px 120px -40px rgba(139, 92, 246, 0.5); }
+  .shot img { display: block; width: 100%; }
+
+  .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px; margin-top: 44px; }
+  .feature { padding: 24px; border-radius: 18px; background: var(--surface); border: 1px solid var(--border); }
+  .feature .ic { width: 42px; height: 42px; border-radius: 12px; display: grid; place-items: center; background: rgba(139, 92, 246, 0.15); font-size: 22px; margin-bottom: 14px; }
+  .feature h3 { font-size: 18px; margin-bottom: 6px; }
+  .feature p { color: var(--muted); margin: 0; font-size: 15px; }
+
+  table { width: 100%; border-collapse: collapse; margin-top: 36px; font-size: 15px; }
+  th, td { text-align: left; padding: 14px 16px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { font: 600 13px "Sora", sans-serif; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
+  td:first-child { color: var(--muted); width: 42%; }
+  td .yes { color: #34d399; font-weight: 600; }
+
+  .gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; margin-top: 40px; }
+  .gallery figure { margin: 0; border-radius: 16px; overflow: hidden; border: 1px solid var(--border); background: var(--surface); }
+  .gallery img { width: 100%; display: block; aspect-ratio: 16/9; object-fit: cover; transition: transform 0.4s; }
+  .gallery figure:hover img { transform: scale(1.04); }
+  .gallery figcaption { padding: 10px 14px; font: 600 14px "Sora", sans-serif; }
+
+  .faq details { border-bottom: 1px solid var(--border); padding: 18px 0; }
+  .faq summary { cursor: pointer; font: 600 18px "Sora", sans-serif; }
+  .faq p { color: var(--muted); }
+
+  .final { text-align: center; padding: 120px 0; background: radial-gradient(600px 300px at 50% 0%, rgba(139, 92, 246, 0.25), transparent 70%); }
+  .final img { width: 96px; filter: drop-shadow(0 20px 50px rgba(139, 92, 246, 0.6)); }
+  .final h2 { margin: 18px auto 12px; }
+  footer { border-top: 1px solid var(--border); padding: 28px 0; color: var(--muted); font-size: 14px; }
+  footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+  @media (max-width: 720px) { nav .links { display: none; } td:first-child { width: auto; } }
+</style>
+</head>
+<body>
+<nav><div class="wrap">
+  <a class="brand" href="#"><img src="assets/icon-256.png" alt="">Wallgates</a>
+  <div class="links"><a href="#features">Features</a><a href="#compare">Why Wallgates</a><a href="#gallery">Gallery</a><a href="#faq">FAQ</a><a href="https://github.com/CerLioX17/WallGates">GitHub</a></div>
+</div></nav>
+
+<header class="hero">
+  <canvas id="bg"></canvas>
+  <div class="wrap">
+    <h1>Live wallpapers,<br><span class="grad">open to everyone.</span></h1>
+    <p class="lead">Wallgates is a free, open-source live wallpaper engine for Windows. Shaders, web pages and videos that react to your music, with no Steam, no account and no telemetry.</p>
+    <div class="cta">
+      <a class="btn primary" href="https://github.com/CerLioX17/WallGates/releases/latest">⬇ Download for Windows</a>
+      <a class="btn" href="https://github.com/CerLioX17/WallGates">★ Star on GitHub</a>
+    </div>
+    <p class="small">Windows 10 &amp; 11 · tiny installer · no admin rights · GPL-3.0</p>
+  </div>
+</header>
+
+<section id="features"><div class="wrap">
+  <div class="eyebrow">Features</div>
+  <h2>Everything a wallpaper engine should be, <span class="grad">including what others forgot.</span></h2>
+  <div class="shot"><img src="assets/screenshot.png" alt="Wallgates app"></div>
+  <div class="features">
+    <div class="feature"><div class="ic">🎮</div><h3>Zero FPS loss in games</h3><p>Pauses, throttles or fully unloads when a game covers a display, including borderless windows, per display.</p></div>
+    <div class="feature"><div class="ic">🖥️</div><h3>Every display, remembered</h3><p>A different wallpaper per monitor or one spanning all. Monitors are recognised by hardware, so nothing shuffles after sleep.</p></div>
+    <div class="feature"><div class="ic">🎵</div><h3>Reacts to your music</h3><p>System audio spectrum, now playing with cover art, cursor parallax, CPU/RAM and weather, with permissions you can see.</p></div>
+    <div class="feature"><div class="ic">🌅</div><h3>Playlists that follow the sun</h3><p>Rotate on a timer, shuffle, or switch at real sunrise and sunset for your city, with smooth crossfades.</p></div>
+    <div class="feature"><div class="ic">✍️</div><h3>Live code editor</h3><p>Write a shader or a web page and watch your desktop update as you type, with errors shown inline.</p></div>
+    <div class="feature"><div class="ic">🛡️</div><h3>Safe by design</h3><p>No executables, ever. Web wallpapers are sandboxed and offline by default. No hooks, no services, no admin.</p></div>
+    <div class="feature"><div class="ic">📦</div><h3>Bring your wallpapers</h3><p>Import images, videos, <code>.wallgates</code> packages, and Wallpaper Engine video &amp; web projects, all at once.</p></div>
+    <div class="feature"><div class="ic">🔒</div><h3>Lock screen too</h3><p>Optionally mirror your wallpaper to the Windows lock screen and background.</p></div>
+  </div>
+</div></section>
+
+<section id="compare" style="background:linear-gradient(180deg,transparent,rgba(19,18,31,.6),transparent)"><div class="wrap">
+  <div class="eyebrow">Why Wallgates</div>
+  <h2>Built from what users actually complain about.</h2>
+  <table>
+    <tr><th>The usual pain</th><th>Wallgates</th></tr>
+    <tr><td>Game FPS tanks; pause misses borderless games</td><td><span class="yes">✓</span> Detects any window covering a display; Pause, Eco or Unload</td></tr>
+    <tr><td>Wallpapers lost after sleep or reconnecting a monitor</td><td><span class="yes">✓</span> Hardware-based display identity</td></tr>
+    <tr><td>Wallpaper vanishes after Explorer restarts</td><td><span class="yes">✓</span> Automatic re-attach watchdog</td></tr>
+    <tr><td>Malicious "application" wallpapers</td><td><span class="yes">✓</span> Executables are never run; web wallpapers are offline by default</td></tr>
+    <tr><td>Needs Steam and an account</td><td><span class="yes">✓</span> Standalone, no account, no telemetry</td></tr>
+    <tr><td>Widgets require Rainmeter</td><td><span class="yes">✓</span> Weather, music, CPU/RAM built into wallpapers</td></tr>
+    <tr><td>Closed source</td><td><span class="yes">✓</span> GPL-3.0, audit and contribute on GitHub</td></tr>
+  </table>
+</div></section>
+
+<section id="gallery"><div class="wrap">
+  <div class="eyebrow">Gallery</div>
+  <h2>Start with something beautiful.</h2>
+  <p class="sub">Every wallpaper is customizable: colors, speed, music reactivity and more.</p>
+  <div class="gallery">
+    <figure><img src="assets/previews/gatescape.jpg" alt="" loading="lazy"><figcaption>Gatescape</figcaption></figure>
+    <figure><img src="assets/previews/pulse.jpg" alt="" loading="lazy"><figcaption>Pulse — audio visualizer</figcaption></figure>
+    <figure><img src="assets/previews/dashboard.jpg" alt="" loading="lazy"><figcaption>Dashboard — widgets</figcaption></figure>
+    <figure><img src="assets/previews/synthwave.jpg" alt="" loading="lazy"><figcaption>Synthwave</figcaption></figure>
+    <figure><img src="assets/previews/aurora.jpg" alt="" loading="lazy"><figcaption>Aurora</figcaption></figure>
+    <figure><img src="assets/previews/ocean-night.jpg" alt="" loading="lazy"><figcaption>Ocean Night</figcaption></figure>
+    <figure><img src="assets/previews/liquid.jpg" alt="" loading="lazy"><figcaption>Liquid</figcaption></figure>
+    <figure><img src="assets/previews/hyperspace.jpg" alt="" loading="lazy"><figcaption>Hyperspace</figcaption></figure>
+    <figure><img src="assets/previews/particles.jpg" alt="" loading="lazy"><figcaption>Constellation</figcaption></figure>
+  </div>
+</div></section>
+
+<section id="faq"><div class="wrap faq">
+  <div class="eyebrow">FAQ</div>
+  <h2>Questions</h2>
+  <details><summary>Is it really free?</summary><p>Yes. Wallgates is open source under GPL-3.0. No ads, no tracking, no paywalled features.</p></details>
+  <details><summary>Windows says "Windows protected your PC". Is it safe?</summary><p>New independent apps show this until they build download reputation. Click <b>More info → Run anyway</b>. The full source is public, every release lists SHA-256 checksums, and signed builds are in progress.</p></details>
+  <details><summary>Will it slow down my games?</summary><p>By default Wallgates pauses the wallpaper on any display covered by a game or fullscreen app, including borderless ones. You can switch to "Unload" to free GPU memory entirely, or add per-game rules.</p></details>
+  <details><summary>Can I use my Wallpaper Engine wallpapers?</summary><p>Video and web wallpapers can be imported, even your whole workshop folder at once. Web wallpapers keep their options and audio reactivity. Scene wallpapers use a proprietary format and can't be imported.</p></details>
+  <details><summary>How do I make my own?</summary><p>Open <b>Create</b> in the app, pick a template and start typing. Your desktop updates live. See the <a href="https://github.com/CerLioX17/WallGates/blob/main/docs/wallpaper-format.md">format guide</a>.</p></details>
+</div></section>
+
+<section class="final"><div class="wrap">
+  <img src="assets/icon-256.png" alt="">
+  <h2>Open the gate.</h2>
+  <p class="sub" style="margin:0 auto 30px">Your desktop, alive in two minutes.</p>
+  <a class="btn primary" href="https://github.com/CerLioX17/WallGates/releases/latest">⬇ Download Wallgates</a>
+</div></section>
+
+<footer><div class="wrap"><span>© 2026 Wallgates contributors · GPL-3.0</span><span>Not affiliated with Wallpaper Engine or Valve.</span></div></footer>
+
+<script>
+// Live hero background: a compact version of the Gatescape shader.
+(function () {
+  const c = document.getElementById('bg');
+  const gl = c.getContext('webgl', { antialias: false, powerPreference: 'low-power' });
+  if (!gl) return;
+  const vs = 'attribute vec2 p;void main(){gl_Position=vec4(p,0.,1.);}';
+  const fs = `precision mediump float;uniform vec2 R;uniform float T;uniform vec2 M;
+  float h(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
+  float n(vec2 p){vec2 i=floor(p),f=fract(p);vec2 u=f*f*(3.-2.*f);return mix(mix(h(i),h(i+vec2(1,0)),u.x),mix(h(i+vec2(0,1)),h(i+vec2(1,1)),u.x),u.y);}
+  float fb(vec2 p){float v=0.,a=.5;for(int i=0;i<4;i++){v+=a*n(p);p*=2.03;a*=.5;}return v;}
+  vec3 pal(float t){vec3 a=vec3(.13,.83,.93),b=vec3(.55,.36,.96),c=vec3(.93,.28,.6);t=clamp(t,0.,1.);return t<.5?mix(a,b,t*2.):mix(b,c,t*2.-1.);}
+  float g(vec2 p,float w,float hh){if(p.y>hh)return length(p-vec2(0.,hh))-w;return max(abs(p.x)-w,-p.y);}
+  void main(){vec2 uv=(gl_FragCoord.xy-.5*R)/R.y;float t=T*.4;float gx=max(.22,R.x/R.y*.5-.32);
+    vec3 col=mix(vec3(.02,.02,.05),vec3(.07,.04,.13),smoothstep(-.6,.6,uv.y));
+    vec2 sp=(uv+M*.01)*170.;float s=h(floor(sp));col+=step(.996,s)*(.5+.5*sin(T*3.+s*50.))*.7;
+    col+=pal(.5)*exp(-length(uv*vec2(1.,1.3))*2.4)*.35;
+    vec2 gp=uv+M*.04-vec2(gx,-.3);float d=g(gp,.15,.27);
+    if(uv.y>-.3){ if(d<0.){vec2 q=gp*vec2(2.2,1.6)+vec2(0.,-t*.12);float nn=fb(q*2.+fb(q*3.+t*.15));
+      vec3 inn=pal(1.-clamp(gp.y/.42,0.,1.)*.9+(nn-.5)*.4)*(.45+.75*nn);col=mix(col,inn,smoothstep(0.,-.01,d));}
+      float e=abs(d)-.01;vec3 fc=pal(clamp((gp.y+.15)/.57,0.,1.));col+=fc*smoothstep(.006,0.,e)*.85+fc*exp(-max(e,0.)*34.)*.38;}
+    else{col=vec3(.02,.02,.04)+pal(.3)*exp(-abs(uv.x-gx)*12.)*.08;}
+    col+=pal(0.)*exp(-abs(uv.y+.3)*160.)*smoothstep(.4,0.,abs(uv.x-gx))*.7;
+    col=col/(1.+col*.35);gl_FragColor=vec4(col,1.);}`;
+  const sh = (t, s) => { const o = gl.createShader(t); gl.shaderSource(o, s); gl.compileShader(o); return o; };
+  const pr = gl.createProgram();
+  gl.attachShader(pr, sh(gl.VERTEX_SHADER, vs)); gl.attachShader(pr, sh(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(pr); gl.useProgram(pr);
+  gl.bindBuffer(gl.ARRAY_BUFFER, gl.createBuffer());
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  const lp = gl.getAttribLocation(pr, 'p'); gl.enableVertexAttribArray(lp); gl.vertexAttribPointer(lp, 2, gl.FLOAT, false, 0, 0);
+  const uR = gl.getUniformLocation(pr, 'R'), uT = gl.getUniformLocation(pr, 'T'), uM = gl.getUniformLocation(pr, 'M');
+  let mx = 0, my = 0;
+  addEventListener('mousemove', (e) => { mx = e.clientX / innerWidth - 0.5; my = 0.5 - e.clientY / innerHeight; });
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  function frame(ms) {
+    const s = Math.min(1, 1400 / innerWidth);
+    const w = Math.round(innerWidth * s), hh = Math.round(c.clientHeight * s);
+    if (c.width !== w || c.height !== hh) { c.width = w; c.height = hh; gl.viewport(0, 0, w, hh); }
+    gl.uniform2f(uR, w, hh); gl.uniform1f(uT, ms / 1000); gl.uniform2f(uM, mx, my);
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    if (!reduce) requestAnimationFrame(frame);
+  }
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
