@@ -1,0 +1,63 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body {
+    --a: #141e3c; --b: #3b1f4f; --fg: #f5f7ff; --size: 11vw;
+    background: linear-gradient(120deg, var(--a), var(--b), var(--a));
+    background-size: 300% 300%; animation: drift 40s ease-in-out infinite;
+    color: var(--fg); font-family: "Segoe UI Variable Display", "Segoe UI", system-ui, sans-serif;
+    display: flex; padding: 6vh 6vw; box-sizing: border-box;
+  }
+  body.paused { animation-play-state: paused; }
+  body.center { align-items: center; justify-content: center; text-align: center; }
+  body.bottom-left { align-items: flex-end; justify-content: flex-start; }
+  body.top-right { align-items: flex-start; justify-content: flex-end; text-align: right; }
+  #time { font-size: var(--size); font-weight: 200; letter-spacing: -.02em; line-height: 1; font-variant-numeric: tabular-nums; }
+  #date { font-size: calc(var(--size) * .16); opacity: .75; margin-top: .6em; letter-spacing: .04em; }
+  #caption { font-size: calc(var(--size) * .14); opacity: .6; margin-top: .4em; }
+  @keyframes drift { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+</style>
+</head>
+<body class="center">
+<div><div id="time"></div><div id="date"></div><div id="caption"></div></div>
+<script>
+// Minimal Clock — Wallgates built-in HTML wallpaper (GPL-3.0-or-later).
+let o = { format24: true, seconds: false, showDate: true, size: 11, position: 'center', textColor: '#f5f7ff', colorA: '#141e3c', colorB: '#3b1f4f', greeting: '' };
+let timer = 0;
+const $ = (id) => document.getElementById(id);
+
+function tick() {
+  const now = new Date();
+  $('time').textContent = now.toLocaleTimeString([], {
+    hour: '2-digit', minute: '2-digit', second: o.seconds ? '2-digit' : undefined, hour12: !o.format24,
+  });
+  $('date').textContent = o.showDate ? now.toLocaleDateString([], { weekday: 'long', day: 'numeric', month: 'long' }) : '';
+}
+function apply() {
+  const s = document.body.style;
+  s.setProperty('--a', o.colorA); s.setProperty('--b', o.colorB);
+  s.setProperty('--fg', o.textColor); s.setProperty('--size', o.size + 'vw');
+  document.body.classList.remove('center', 'bottom-left', 'top-right');
+  document.body.classList.add(o.position);
+  $('caption').textContent = o.greeting;
+  tick();
+}
+function setPaused(p) {
+  document.body.classList.toggle('paused', p);
+  clearInterval(timer);
+  // Keep the clock correct while paused, just tick less often.
+  timer = setInterval(tick, p ? 15000 : 1000);
+}
+addEventListener('message', (e) => {
+  const m = e.data;
+  if (!m || m.type !== 'wallgates') return;
+  if (m.values) { o = { ...o, ...m.values }; apply(); }
+  setPaused(!!m.paused);
+});
+apply(); setPaused(false);
+</script>
+</body>
+</html>

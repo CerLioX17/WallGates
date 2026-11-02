@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wallgates</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <img src="icon.png" alt="" width="28" height="28" />
+      <span>Wallgates</span>
+    </div>
+    <div class="topbar-actions">
+      <span id="status" class="pill">Running</span>
+      <button id="pause-btn" class="btn">Pause</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <section class="library">
+      <div class="toolbar">
+        <input id="search" type="search" placeholder="Search wallpapers" autocomplete="off" />
+        <div class="chips" role="tablist">
+          <button class="chip active" data-filter="all">All</button>
+          <button class="chip" data-filter="builtin">Built-in</button>
+          <button class="chip" data-filter="user">Mine</button>
+        </div>
+        <div class="spacer"></div>
+        <button id="import-file" class="btn primary">Import image / video</button>
+        <button id="import-folder" class="btn">Import folder</button>
+        <button id="open-folder" class="btn ghost" title="Open the user wallpaper folder">Open folder</button>
+      </div>
+      <div id="grid" class="grid"></div>
+      <p id="empty" class="empty" hidden>No wallpapers match.</p>
+    </section>
+
+    <aside class="panel">
+      <div id="details"></div>
+      <section class="settings">
+        <h3>Performance</h3>
+        <label class="row"><span>Pause when an app is fullscreen</span><input type="checkbox" class="switch" data-setting="pause_on_fullscreen" /></label>
+        <label class="row"><span>Pause when an app is maximized</span><input type="checkbox" class="switch" data-setting="pause_on_maximized" /></label>
+        <label class="row"><span>Pause on battery</span><input type="checkbox" class="switch" data-setting="pause_on_battery" /></label>
+        <label class="row"><span>Shader frame limit</span>
+          <select data-setting="fps_limit">
+            <option value="24">24 fps</option>
+            <option value="30">30 fps</option>
+            <option value="60">60 fps</option>
+            <option value="120">120 fps</option>
+            <option value="0">Unlimited</option>
+          </select>
+        </label>
+        <button id="reapply" class="btn ghost full">Re-attach to desktop</button>
+      </section>
+    </aside>
+  </main>
+
+  <div id="toast" class="toast" hidden></div>
+  <script src="app.js"></script>
+</body>
+</html>

@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Wallgates wallpaper</title>
+  <style>
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #000; cursor: default; }
+    #stage, #stage > * { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; display: block; }
+    #stage > img, #stage > video { object-fit: cover; }
+    #error {
+      position: absolute; left: 24px; bottom: 24px; max-width: 70%;
+      font: 13px/1.4 ui-monospace, Consolas, monospace; color: #ff8a8a;
+      background: rgba(0,0,0,.75); padding: 12px 14px; border-radius: 8px; white-space: pre-wrap;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="stage"></div>
+  <div id="error"></div>
+  <script src="host.js"></script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+{
+  "name": "Constellation",
+  "author": "Wallgates",
+  "description": "Drifting particles connected by light — an HTML/Canvas wallpaper.",
+  "type": "html",
+  "entry": "index.html",
+  "preview": "preview.jpg",
+  "properties": {
+    "count": { "label": "Particles", "type": "slider", "min": 20, "max": 400, "step": 10, "default": 140 },
+    "speed": { "label": "Speed", "type": "slider", "min": 0, "max": 3, "step": 0.1, "default": 1 },
+    "linkDistance": { "label": "Link distance", "type": "slider", "min": 0, "max": 300, "step": 10, "default": 140 },
+    "color": { "label": "Particle color", "type": "color", "default": "#8fb3ff" },
+    "background": { "label": "Background", "type": "color", "default": "#070912" },
+    "glow": { "label": "Glow", "type": "bool", "default": true }
+  }
+}

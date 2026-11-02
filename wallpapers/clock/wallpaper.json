@@ -1,0 +1,23 @@
+{
+  "name": "Minimal Clock",
+  "author": "Wallgates",
+  "description": "A large clock and date over a slow gradient.",
+  "type": "html",
+  "entry": "index.html",
+  "preview": "preview.jpg",
+  "properties": {
+    "format24": { "label": "24-hour clock", "type": "bool", "default": true },
+    "seconds": { "label": "Show seconds", "type": "bool", "default": false },
+    "showDate": { "label": "Show date", "type": "bool", "default": true },
+    "size": { "label": "Clock size", "type": "slider", "min": 4, "max": 22, "step": 0.5, "default": 11 },
+    "position": { "label": "Position", "type": "select", "options": [
+      { "value": "center", "label": "Center" },
+      { "value": "bottom-left", "label": "Bottom left" },
+      { "value": "top-right", "label": "Top right" }
+    ], "default": "center" },
+    "textColor": { "label": "Text color", "type": "color", "default": "#f5f7ff" },
+    "colorA": { "label": "Gradient A", "type": "color", "default": "#141e3c" },
+    "colorB": { "label": "Gradient B", "type": "color", "default": "#3b1f4f" },
+    "greeting": { "label": "Caption", "type": "text", "default": "" }
+  }
+}
