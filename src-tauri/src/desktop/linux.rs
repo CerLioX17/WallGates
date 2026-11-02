@@ -6,7 +6,7 @@ use super::{PauseRules, Rect};
 use gtk::prelude::*;
 use tauri::{PhysicalPosition, PhysicalSize, WebviewWindow};
 
-pub fn attach(window: &WebviewWindow, rect: Rect) -> Result<(), String> {
+pub fn attach(window: &WebviewWindow, rect: Rect) -> Result<String, String> {
     window
         .set_position(PhysicalPosition::new(rect.x, rect.y))
         .map_err(|e| e.to_string())?;
@@ -28,7 +28,8 @@ pub fn attach(window: &WebviewWindow, rect: Rect) -> Result<(), String> {
             }
             let _ = w.show();
         })
-        .map_err(|e| e.to_string())
+        .map_err(|e| e.to_string())?;
+    Ok("strategy: X11 _NET_WM_WINDOW_TYPE_DESKTOP".into())
 }
 
 pub fn should_auto_pause(_rules: PauseRules) -> bool {

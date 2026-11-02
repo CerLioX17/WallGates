@@ -33,6 +33,14 @@ Download the latest installer from **[Releases](../../releases)**:
 
 Wallgates lives in the system tray. Closing the window keeps your wallpaper running; use **Quit** from the tray icon to stop it.
 
+## Troubleshooting
+
+If the wallpaper does not appear behind your icons, use **Re-attach to desktop** from the tray icon.
+If that does not help, open an issue and attach the diagnostics log:
+
+- Windows: `%APPDATA%\app.wallgates.desktop\wallgates.log`
+- Linux: `~/.local/share/app.wallgates.desktop/wallgates.log`
+
 ## Build from source
 
 Requirements: [Rust](https://rustup.rs), Node.js 20+, and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your OS (WebView2 is preinstalled on Windows 10/11).

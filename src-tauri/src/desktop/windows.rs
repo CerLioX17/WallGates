@@ -42,8 +42,8 @@ unsafe extern "system" fn enum_proc(top: HWND, lparam: LPARAM) -> BOOL {
     BOOL(1)
 }
 
-/// Returns (parent, insert_after) for the wallpaper window.
-unsafe fn find_target() -> Result<(HWND, Option<HWND>), String> {
+/// Returns (parent, insert_after, strategy name) for the wallpaper window.
+unsafe fn find_target() -> Result<(HWND, Option<HWND>, &'static str), String> {
     let progman = FindWindowW(w!("Progman"), PCWSTR::null())
         .map_err(|e| format!("Progman not found: {e}"))?;
 
@@ -64,25 +64,57 @@ unsafe fn find_target() -> Result<(HWND, Option<HWND>), String> {
     let mut worker = HWND(std::ptr::null_mut());
     let _ = EnumWindows(Some(enum_proc), LPARAM(&mut worker as *mut HWND as isize));
     if !worker.0.is_null() {
-        return Ok((worker, None));
+        return Ok((worker, None, "top-level WorkerW (Windows 10 / 11 pre-24H2)"));
     }
 
     // Windows 11 24H2+.
     if let Some(worker) = find_child(Some(progman), None, w!("WorkerW")) {
-        return Ok((worker, None));
+        return Ok((worker, None, "WorkerW child of Progman (Windows 11 24H2+)"));
     }
 
     // Last resort: inside Progman, below the icon layer.
     let defview = find_child(Some(progman), None, w!("SHELLDLL_DefView"));
-    Ok((progman, defview))
+    Ok((progman, defview, "Progman below SHELLDLL_DefView (fallback)"))
 }
 
-pub fn attach(window: &WebviewWindow, rect: Rect) -> Result<(), String> {
+unsafe fn child_classes(parent: HWND) -> Vec<String> {
+    let mut out = Vec::new();
+    let mut after: Option<HWND> = None;
+    while let Some(child) = find_child(Some(parent), after, PCWSTR::null()) {
+        out.push(class_name(child));
+        after = Some(child);
+        if out.len() > 32 {
+            break;
+        }
+    }
+    out
+}
+
+/// Explorer's desktop window tree, for the diagnostics log.
+unsafe fn describe_desktop() -> String {
+    let Ok(progman) = FindWindowW(w!("Progman"), PCWSTR::null()) else {
+        return "Progman: not found".into();
+    };
+    let mut lines = vec![format!("Progman children: {:?}", child_classes(progman))];
+    let mut after: Option<HWND> = None;
+    let mut n = 0;
+    while let Some(worker) = find_child(None, after, w!("WorkerW")) {
+        lines.push(format!("top-level WorkerW #{n} children: {:?}", child_classes(worker)));
+        after = Some(worker);
+        n += 1;
+        if n > 8 {
+            break;
+        }
+    }
+    lines.join("; ")
+}
+
+pub fn attach(window: &WebviewWindow, rect: Rect) -> Result<String, String> {
     let raw = window.hwnd().map_err(|e| e.to_string())?;
     let hwnd = HWND(raw.0 as *mut c_void);
 
     unsafe {
-        let (parent, insert_after) = find_target()?;
+        let (parent, insert_after, strategy) = find_target()?;
 
         // Turn the popup into a non-activating child window.
         let style = GetWindowLongPtrW(hwnd, GWL_STYLE) as u32;
@@ -115,8 +147,17 @@ pub fn attach(window: &WebviewWindow, rect: Rect) -> Result<(), String> {
             flags,
         )
         .map_err(|e| format!("SetWindowPos failed: {e}"))?;
+
+        Ok(format!(
+            "strategy: {strategy}; parent class: {}; position {},{} size {}x{}; {}",
+            class_name(parent),
+            origin.x,
+            origin.y,
+            rect.width,
+            rect.height,
+            describe_desktop()
+        ))
     }
-    Ok(())
 }
 
 unsafe fn class_name(hwnd: HWND) -> String {

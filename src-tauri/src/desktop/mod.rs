@@ -79,13 +79,38 @@ pub fn create_windows(app: &AppHandle) -> Result<(), String> {
             .build()
             .map_err(|e| e.to_string())?;
 
-        if let Err(e) = platform::attach(&window, rect) {
-            eprintln!("[wallgates] could not attach wallpaper window to desktop: {e}");
-            let _ = window.destroy();
-            return Err(e);
+        match platform::attach(&window, rect) {
+            Ok(info) => log(app, &format!("monitor {index} ({}): {info}", monitor_name(monitor))),
+            Err(e) => {
+                log(app, &format!("monitor {index}: attach FAILED: {e}"));
+                let _ = window.destroy();
+                return Err(e);
+            }
         }
     }
     Ok(())
+}
+
+fn monitor_name(m: &tauri::Monitor) -> String {
+    m.name().cloned().unwrap_or_else(|| "unnamed".into())
+}
+
+/// Append a line to `<app data>/wallgates.log` (kept small) for troubleshooting.
+pub fn log(app: &AppHandle, line: &str) {
+    use std::io::Write;
+    eprintln!("[wallgates] {line}");
+    let Ok(dir) = app.path().app_data_dir() else { return };
+    let path = dir.join("wallgates.log");
+    if std::fs::metadata(&path).map(|m| m.len() > 256 * 1024).unwrap_or(false) {
+        let _ = std::fs::remove_file(&path);
+    }
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(path) {
+        let _ = writeln!(f, "[{secs}] v{} {line}", env!("CARGO_PKG_VERSION"));
+    }
 }
 
 pub fn should_auto_pause(rules: PauseRules) -> bool {
