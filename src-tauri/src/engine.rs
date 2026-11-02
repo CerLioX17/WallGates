@@ -631,6 +631,9 @@ pub fn spawn_slow_loop(app: AppHandle) {
             let mut last_weather: Option<Instant> = None;
             let mut weather_key = String::new();
             let mut last_rebuild_check = Instant::now();
+            // Back-off: never re-attach more than 3 times per minute (avoids flicker
+            // loops on unusual desktop configurations).
+            let mut recent_rebuilds: Vec<Instant> = Vec::new();
             loop {
                 std::thread::sleep(Duration::from_millis(250));
                 tick += 1;
@@ -655,7 +658,9 @@ pub fn spawn_slow_loop(app: AppHandle) {
                         let rt = state.rt();
                         (rt.rebuilding || desktop::layout_still_valid(&app, &rt.slots, rt.span), rt.rebuilding)
                     };
-                    if !valid && !rebuilding {
+                    recent_rebuilds.retain(|t| t.elapsed() < Duration::from_secs(60));
+                    if !valid && !rebuilding && recent_rebuilds.len() < 3 {
+                        recent_rebuilds.push(Instant::now());
                         desktop::log(&app, "desktop changed (Explorer restart / monitors / resume): re-attaching");
                         rebuild(&app);
                     }
