@@ -9,3 +9,8 @@ Thanks for helping make Wallgates better!
 - **Bugs**: include your Windows version (`winver`) and the log at `%APPDATA%\app.wallgates.desktop\wallgates.log`.
 
 By contributing you agree your code is licensed under GPL-3.0-or-later.
+
+## Releasing (maintainers)
+Bump `version` in `src-tauri/tauri.conf.json` and `package.json`, add a `## x.y.z` section to
+`CHANGELOG.md`, and push to `main`. CI creates the `vX.Y.Z` tag and a public release with the
+installers and checksums automatically.
