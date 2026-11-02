@@ -8,7 +8,8 @@
 //! * Windows 10 / 11 before 24H2: the target `WorkerW` is a top-level window,
 //!   the sibling right after the window that hosts `SHELLDLL_DefView`.
 //! * Windows 11 24H2+: `SHELLDLL_DefView` and the `WorkerW` are both children of
-//!   `Progman`; we parent to that child `WorkerW`.
+//!   `Progman`; we parent to that child `WorkerW`. Confirmed working on 26H2
+//!   (Progman children: ["SHELLDLL_DefView", "WorkerW"], 4K single monitor).
 //! If neither is found we parent to `Progman` and insert ourselves below
 //! `SHELLDLL_DefView` in the z-order.
 
