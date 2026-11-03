@@ -3,3 +3,7 @@ src-tauri/target/
 src-tauri/gen/schemas/
 *.log
 .DS_Store
+sensors-bin/*
+!sensors-bin/.keep
+sensors/bin/
+sensors/obj/

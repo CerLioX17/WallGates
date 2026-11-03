@@ -6,6 +6,7 @@ mod library;
 mod online;
 mod package;
 mod protocol;
+mod sensors;
 
 use base64::Engine as _;
 use config::{Config, Location, Playlist, Source};
@@ -473,6 +474,36 @@ async fn check_update(app: AppHandle) -> Result<Option<Value>, String> {
     Ok(update)
 }
 
+fn sensors_helper(app: &AppHandle) -> Option<PathBuf> {
+    app.path().resource_dir().ok().map(|d| d.join("sensors").join("WallgatesSensors.exe"))
+}
+
+#[tauri::command]
+fn sensors_status(app: AppHandle, state: State<AppState>) -> Value {
+    sensors::status(sensors_helper(&app).as_deref(), &state.paths.data)
+}
+
+/// One UAC prompt: installs PawnIO (if missing) and the hidden sensor task.
+#[tauri::command]
+async fn sensors_enable(app: AppHandle) -> Result<Value, String> {
+    let helper = sensors_helper(&app).ok_or("installation folder not found")?;
+    let data = app.state::<AppState>().paths.data.clone();
+    let d2 = data.clone();
+    tauri::async_runtime::spawn_blocking(move || sensors::enable(&helper, &d2)).await.map_err(|e| e.to_string())??;
+    desktop::log(&app, "advanced sensors enabled");
+    Ok(sensors::status(sensors_helper(&app).as_deref(), &data))
+}
+
+#[tauri::command]
+async fn sensors_disable(app: AppHandle) -> Result<Value, String> {
+    let helper = sensors_helper(&app).ok_or("installation folder not found")?;
+    let data = app.state::<AppState>().paths.data.clone();
+    let d2 = data.clone();
+    tauri::async_runtime::spawn_blocking(move || sensors::disable(&helper, &d2)).await.map_err(|e| e.to_string())??;
+    desktop::log(&app, "advanced sensors disabled");
+    Ok(sensors::status(sensors_helper(&app).as_deref(), &data))
+}
+
 /// A host sends a PNG frame (data URL or bare base64) for lock screen / desktop sync.
 #[tauri::command]
 fn submit_frame(app: AppHandle, state: State<AppState>, data: String) -> Result<(), String> {
@@ -727,6 +758,9 @@ pub fn run() {
             gallery_install,
             check_update,
             submit_frame,
+            sensors_status,
+            sensors_enable,
+            sensors_disable,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Wallgates");

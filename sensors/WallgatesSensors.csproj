@@ -1,0 +1,26 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <!-- Wallgates hardware sensor helper. Built on Windows CI and shipped inside the Wallgates installer. -->
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net472</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>false</SelfContained>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>WallgatesSensors</AssemblyName>
+    <RootNamespace>Wallgates.Sensors</RootNamespace>
+    <Company>Wallgates</Company>
+    <Product>Wallgates Sensors</Product>
+    <Description>Wallgates hardware sensor helper (LibreHardwareMonitor + PawnIO)</Description>
+    <Copyright>Copyright © 2026 Wallgates contributors. GPL-3.0-or-later.</Copyright>
+    <Version>1.0.0</Version>
+    <ApplicationIcon>../src-tauri/icons/icon.ico</ApplicationIcon>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <DebugType>none</DebugType>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="LibreHardwareMonitorLib" Version="0.9.6" />
+    <PackageReference Include="Microsoft.NETFramework.ReferenceAssemblies" Version="1.0.3" PrivateAssets="all" />
+  </ItemGroup>
+</Project>

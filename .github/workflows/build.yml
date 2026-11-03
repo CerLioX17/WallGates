@@ -71,7 +71,7 @@ jobs:
           awk -v v="## $version" '$0==v{f=1;next} /^## /{f=0} f' CHANGELOG.md > notes.md
           {
             echo "## Download"
-            echo "- **Windows:** \`Wallgates_${version}_x64-setup.exe\` (recommended, no admin rights) or the \`.msi\`"
+            echo "- **Windows:** \`Wallgates_${version}_x64-setup.exe\` (no admin rights needed)"
             echo "- **Linux:** \`.AppImage\` or \`.deb\`"
             echo
             echo "SHA-256 checksums: \`SHA256SUMS-*.txt\`. If Windows shows \"Windows protected your PC\", click **More info → Run anyway** (signed builds are coming)."
@@ -103,6 +103,13 @@ jobs:
         with:
           workspaces: "./src-tauri -> target"
       - run: npm ci
+      - name: Build sensor helper (Windows)
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          dotnet build sensors/WallgatesSensors.csproj -c Release -o sensors-bin
+          cp sensors/THIRD-PARTY-NOTICES.txt sensors/README.md sensors-bin/
+          ls -la sensors-bin
 
       # On a v* tag this publishes a public GitHub Release with the installers
       # as plain files (zipped CI artifacts trip Chrome and antivirus heuristics).
@@ -122,7 +129,7 @@ jobs:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           cd src-tauri/target/release/bundle
-          files=$(ls msi/*.msi nsis/*.exe deb/*.deb appimage/*.AppImage 2>/dev/null || true)
+          files=$(ls nsis/*.exe deb/*.deb appimage/*.AppImage 2>/dev/null || true)
           [ -z "$files" ] && exit 0
           out="SHA256SUMS-${{ runner.os }}.txt"
           sha256sum $files | sed 's#  [a-z]*/#  #' > "$out"
@@ -134,7 +141,6 @@ jobs:
         with:
           name: wallgates-${{ runner.os }}
           path: |
-            src-tauri/target/release/bundle/msi/*.msi
             src-tauri/target/release/bundle/nsis/*.exe
             src-tauri/target/release/bundle/deb/*.deb
             src-tauri/target/release/bundle/appimage/*.AppImage

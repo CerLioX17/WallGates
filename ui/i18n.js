@@ -59,6 +59,11 @@ const STRINGS = {
     'onb.welcome': 'Welcome to Wallgates', 'onb.tagline': 'Live wallpapers, open to everyone.', 'onb.start': 'Get started',
     'onb.prefs': 'A couple of choices', 'onb.autostart': 'Start Wallgates with Windows', 'onb.pauseGames': 'Pause automatically while gaming',
     'onb.pick': 'Choose your first wallpaper', 'onb.done': 'Enter Wallgates', 'onb.importWE': 'Coming from Wallpaper Engine? Import your video & web wallpapers in Create → Import.',
+    'sen.title': 'Advanced sensors', 'sen.text': 'Adds CPU and RAM temperatures, fan speeds and more motherboard sensors to wallpapers like System Terminal. Uses LibreHardwareMonitor (open source) and the PawnIO driver. Enabling it asks for administrator rights once.',
+    'sen.status': 'Status', 'sen.active': 'Active', 'sen.enabledIdle': 'Enabled (starting…)', 'sen.off': 'Off', 'sen.unsupported': 'Windows only',
+    'sen.enable': 'Enable advanced sensors', 'sen.disable': 'Disable and remove', 'sen.working': 'Working…', 'sen.enabled': 'Advanced sensors enabled',
+    'sen.disabled': 'Advanced sensors removed', 'sen.cancelled': 'Cancelled: administrator rights were not granted',
+    'sen.fine': 'Removing them, or uninstalling Wallgates, also removes the PawnIO driver if Wallgates installed it.',
     'common.cancel': 'Cancel', 'common.ok': 'OK', 'common.close': 'Close', 'common.none': 'None', 'common.default': 'Default',
   },
   it: {
@@ -118,6 +123,11 @@ const STRINGS = {
     'onb.welcome': 'Benvenuto in Wallgates', 'onb.tagline': 'Sfondi animati, aperti a tutti.', 'onb.start': 'Iniziamo',
     'onb.prefs': 'Un paio di scelte', 'onb.autostart': 'Avvia Wallgates con Windows', 'onb.pauseGames': 'Metti in pausa automaticamente mentre giochi',
     'onb.pick': 'Scegli il tuo primo sfondo', 'onb.done': 'Entra in Wallgates', 'onb.importWE': 'Arrivi da Wallpaper Engine? Importa i tuoi sfondi video e web in Crea → Importa.',
+    'sen.title': 'Sensori avanzati', 'sen.text': 'Aggiunge temperature di CPU e RAM, velocità delle ventole e altri sensori della scheda madre agli sfondi come System Terminal. Usa LibreHardwareMonitor (open source) e il driver PawnIO. Per attivarli servono i permessi di amministratore una sola volta.',
+    'sen.status': 'Stato', 'sen.active': 'Attivi', 'sen.enabledIdle': 'Attivati (in avvio…)', 'sen.off': 'Disattivati', 'sen.unsupported': 'Solo Windows',
+    'sen.enable': 'Attiva sensori avanzati', 'sen.disable': 'Disattiva e rimuovi', 'sen.working': 'Attendere…', 'sen.enabled': 'Sensori avanzati attivati',
+    'sen.disabled': 'Sensori avanzati rimossi', 'sen.cancelled': 'Annullato: permessi di amministratore non concessi',
+    'sen.fine': 'Rimuovendoli, o disinstallando Wallgates, viene rimosso anche il driver PawnIO se l\'ha installato Wallgates.',
     'common.cancel': 'Annulla', 'common.ok': 'OK', 'common.close': 'Chiudi', 'common.none': 'Nessuno', 'common.default': 'Predefinito',
   },
 };

@@ -631,7 +631,7 @@ pub fn spawn_slow_loop(app: AppHandle) {
         .name("wallgates-engine".into())
         .spawn(move || {
             let mut tick: u64 = 0;
-            let mut system = feeds::system::SystemFeed::default();
+            let mut system = feeds::system::SystemFeed::new(app.state::<AppState>().paths.data.clone());
             let markets = std::sync::Arc::new(std::sync::Mutex::new(feeds::markets::Markets::new(&app.state::<AppState>().paths.data)));
             let markets_busy = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
             let mut last_markets: Option<Instant> = None;

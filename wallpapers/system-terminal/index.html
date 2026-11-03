@@ -326,14 +326,14 @@ function renderHardware() {
   const up = s.uptime || 0;
   $('opLine').textContent = `OPERATOR ${String(o.operator || 'OPERATOR').toUpperCase()} · UPTIME ${Math.floor(up / 86400)}d ${String(Math.floor(up % 86400 / 3600)).padStart(2, '0')}h ${String(Math.floor(up % 3600 / 60)).padStart(2, '0')}m · ${s.processCount} PROCS`;
 
-  const hw = ' HWiNFO';
+  const hw = ' sensors';
   // CPU
   const cores = el('div', 'cores');
   for (const c of s.cores || []) { const i = el('i'); i.style.opacity = 0.15 + Math.min(1, c / 100) * 0.85; if (c >= o.loadMax) i.style.background = css('--bad'); cores.append(i); }
   cores.style.gridTemplateColumns = `repeat(${Math.min(32, Math.max(8, (s.cores || []).length))}, 1fr)`;
   card('cpuCard', s.cpuName || 'CPU', [
     gauge('LOAD', s.cpu, pct(s.cpu), 100, o.loadMax - 15, o.loadMax),
-    gauge('TEMP', s.cpuTemp, tC(s.cpuTemp), 100, o.cpuTempMax - 10, o.cpuTempMax, 'needs' + hw),
+    gauge('TEMP', s.cpuTemp, tC(s.cpuTemp), 100, o.cpuTempMax - 10, o.cpuTempMax, 'enable in Settings'),
   ], H.cpu, H.cpuT, [
     ['FREQUENCY', s.cpuFreq ? `${(s.cpuFreq / 1000).toFixed(2)} GHz` : '—'],
     ['POWER', s.cpuPower != null ? `${Math.round(s.cpuPower)} W` : '—'],
@@ -357,7 +357,7 @@ function renderHardware() {
   const mbar = el('div', 'bar'); const mi = el('i'); mi.style.width = `${s.memory || 0}%`; mbar.append(mi);
   card('ramCard', `${bytes(s.memoryTotal)} SYSTEM MEMORY`, [
     gauge('USAGE', s.memory, pct(s.memory), 100, 80, 92),
-    gauge('TEMP', s.ramTemp, tC(s.ramTemp), 100, 60, 75, 'needs' + hw),
+    gauge('TEMP', s.ramTemp, tC(s.ramTemp), 100, 60, 75, 'enable in Settings'),
   ], H.ram, H.ramT, [
     ['IN USE', `${bytes(s.memoryUsed)}`],
     ['AVAILABLE', bytes(s.memoryAvailable)],
@@ -403,7 +403,7 @@ function renderHardware() {
   graph($('netGraph'), H.rx, H.tx, Math.max(1, ...H.rx.filter(Boolean), ...H.tx.filter(Boolean)), Math.max(1, ...H.rx.filter(Boolean), ...H.tx.filter(Boolean)));
   const fans = s.fans || [];
   $('fans').replaceChildren(...(fans.length ? fans.slice(0, 4).flatMap((f) => [el('dt', 'k', String(f.label).toUpperCase().slice(0, 18)), el('dd', null, `${f.rpm} RPM`)])
-    : [el('dt', 'k', 'FANS'), el('dd', 'k', g.fan ? `GPU ${g.fan} RPM` : 'via HWiNFO')]));
+    : [el('dt', 'k', 'FANS'), el('dd', 'k', g.fan ? `GPU ${g.fan} RPM` : 'advanced sensors')]));
 
   for (const c of ['cpuCard', 'gpuCard', 'ramCard', 'ssdCard']) $(c).querySelectorAll('canvas').forEach(() => {});
 
@@ -565,8 +565,9 @@ Wallgates.on('system', (d) => {
   push(H.rx, d.net?.rx); push(H.tx, d.net?.tx);
   if (first) {
     log(`HOST ${d.host || '?'} · ${(d.cores || []).length} THREADS · ${bytes(d.memoryTotal)} RAM`);
-    if (d.sources?.temperatures !== 'hwinfo') log('TIP: run HWiNFO with Shared Memory Support for CPU/RAM temperatures', 'warn');
+    if (!['hwinfo', 'wallgates-sensors'].includes(d.sources?.temperatures)) log('TIP: Wallgates → Settings → Advanced sensors adds CPU/RAM temperatures and fans', 'warn');
     else log('SENSORS: HWiNFO shared memory connected');
+    if (d.sources?.temperatures === 'wallgates-sensors') log('SENSORS: Wallgates advanced sensors online');
   }
   if (!Wallgates.paused) renderHardware();
 });

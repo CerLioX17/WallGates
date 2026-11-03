@@ -791,6 +791,22 @@ async function renderSettings(view) {
   const p = c.performance || {};
   const acts = [['none', t('set.act.none')], ['eco', t('set.act.eco')], ['pause', t('set.act.pause')], ['stop', t('set.act.stop')]];
   const autostart = await invoke('get_autostart').catch(() => false);
+  const sensors = await invoke('sensors_status').catch(() => ({ supported: false }));
+  const sensorsBox = el('div', { class: 'stack' });
+  const drawSensors = (st, busy = false) => {
+    const state = !st.supported ? t('sen.unsupported') : st.enabled ? (st.running ? t('sen.active') : t('sen.enabledIdle')) : t('sen.off');
+    sensorsBox.replaceChildren(...[
+      el('p', { class: 'muted', style: 'font-size:13px' }, t('sen.text')),
+      el('div', { class: 'setting' }, el('span', {}, t('sen.status')), el('strong', { style: `color:${st.enabled ? 'var(--ok)' : 'var(--muted)'}` }, state)),
+      st.supported ? el('div', { class: 'row', style: 'justify-content:flex-start;gap:8px' },
+        st.enabled
+          ? el('button', { class: 'btn', disabled: busy, onclick: async () => { drawSensors(st, true); try { const n = await invoke('sensors_disable'); toast(t('sen.disabled')); drawSensors(n); } catch (e) { toast(String(e) === 'cancelled' ? t('sen.cancelled') : String(e), String(e) !== 'cancelled'); drawSensors(st); } } }, t('sen.disable'))
+          : el('button', { class: 'btn primary', disabled: busy || !st.helper, onclick: async () => { drawSensors(st, true); try { const n = await invoke('sensors_enable'); toast(t('sen.enabled')); drawSensors(n); } catch (e) { toast(String(e) === 'cancelled' ? t('sen.cancelled') : String(e), String(e) !== 'cancelled'); drawSensors(st); } } }, icon('cpu'), busy ? t('sen.working') : t('sen.enable')),
+      ) : null,
+      el('p', { class: 'faint', style: 'font-size:12px' }, t('sen.fine')),
+    ].filter(Boolean));
+  };
+  drawSensors(sensors);
 
   const rulesBox = el('div', { class: 'rules' });
   const drawRules = () => {
@@ -849,6 +865,9 @@ async function renderSettings(view) {
         setting(t('set.muteUnless'), sw(p.mute_unless_desktop, (v) => patch({ performance: { mute_unless_desktop: v } }))),
         el('div', { class: 'setting' }, el('span', {}, t('set.volume')),
           el('input', { type: 'range', min: 0, max: 1, step: 0.05, value: p.volume, style: 'max-width:200px', oninput: throttle((e) => patch({ performance: { volume: Number(e.target.value) } }), 120) }))),
+      el('div', { class: 'panel' },
+        el('h2', {}, t('sen.title')),
+        sensorsBox),
       el('div', { class: 'panel' },
         el('h2', {}, t('set.rules')),
         el('p', { class: 'muted', style: 'font-size:13px' }, t('set.rulesHint')),

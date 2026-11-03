@@ -11,6 +11,8 @@ use std::time::Instant;
 use sysinfo::{Components, Disks, Networks, ProcessesToUpdate, System};
 
 pub struct SystemFeed {
+    #[cfg_attr(not(windows), allow(dead_code))]
+    data_dir: std::path::PathBuf,
     sys: System,
     disks: Disks,
     networks: Networks,
@@ -23,11 +25,12 @@ pub struct SystemFeed {
     drives: super::drives_windows::DriveProbe,
 }
 
-impl Default for SystemFeed {
-    fn default() -> Self {
+impl SystemFeed {
+    pub fn new(data_dir: std::path::PathBuf) -> Self {
         let mut sys = System::new();
         sys.refresh_cpu_all();
         Self {
+            data_dir,
             sys,
             disks: Disks::new_with_refreshed_list(),
             networks: Networks::new_with_refreshed_list(),
@@ -190,7 +193,47 @@ impl SystemFeed {
             if !probed.is_empty() {
                 out["drives"] = json!(probed);
             }
-            if let Some(hw) = super::hwinfo::read() {
+            if self.tick % 15 == 2 {
+                crate::sensors::ensure_running(&self.data_dir);
+            }
+            if let Some(lhm) = crate::sensors::read(&self.data_dir) {
+                let s = crate::sensors::summarize(&lhm);
+                let set = |out: &mut Value, k: &str, v: Option<f64>| {
+                    if let Some(v) = v {
+                        out[k] = json!(round1(v));
+                    }
+                };
+                set(&mut out, "cpuTemp", s.cpu_temp);
+                set(&mut out, "cpuPower", s.cpu_power);
+                set(&mut out, "ramTemp", s.ram_temp);
+                if let Some(g) = out.get_mut("gpu").filter(|g| g.is_object()) {
+                    if g["temp"].is_null() {
+                        set(g, "temp", s.gpu_temp);
+                    }
+                    set(g, "hotspot", s.gpu_hotspot);
+                    set(g, "power", s.gpu_power);
+                }
+                if let Some(list) = out["drives"].as_array_mut() {
+                    let mut storage = s.storage.clone();
+                    for d in list.iter_mut().filter(|d| d["temp"].is_null()) {
+                        let model = d["model"].as_str().unwrap_or("").to_ascii_lowercase();
+                        let pos = storage
+                            .iter()
+                            .position(|(n, _)| { let n = n.to_ascii_lowercase(); !model.is_empty() && (n.contains(&model) || model.contains(&n)) })
+                            .or(if storage.is_empty() { None } else { Some(0) });
+                        if let Some(i) = pos {
+                            d["temp"] = json!(round1(storage.remove(i).1));
+                        }
+                    }
+                }
+                out["fans"] = json!(s.fans.iter().map(|(l, v)| json!({ "label": l, "rpm": v })).collect::<Vec<_>>());
+                out["sensors"] = json!(lhm
+                    .iter()
+                    .take(400)
+                    .map(|r| json!({ "label": format!("{} · {}", r.hw, r.name), "unit": r.kind, "value": round1(r.value), "type": r.kind.to_ascii_lowercase() }))
+                    .collect::<Vec<_>>());
+                out["sources"]["temperatures"] = json!("wallgates-sensors");
+            } else if let Some(hw) = super::hwinfo::read() {
                 let pairs: Vec<(String, f64)> = hw
                     .iter()
                     .filter(|r| r.kind == "temperature")
@@ -270,7 +313,7 @@ mod tests {
 
     #[test]
     fn samples_real_system() {
-        let mut f = SystemFeed::default();
+        let mut f = SystemFeed::new(std::env::temp_dir());
         let v = f.sample();
         assert!(v["memoryTotal"].as_u64().unwrap() > 0);
         assert!(!v["cores"].as_array().unwrap().is_empty());

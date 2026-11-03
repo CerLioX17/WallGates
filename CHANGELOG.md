@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.5.0
+**Advanced sensors, built in.** No second app to install: Wallgates → Settings → *Advanced sensors* →
+*Enable* adds CPU and RAM temperatures, CPU power, GPU hotspot and every fan to wallpapers like System
+Terminal.
+- Powered by LibreHardwareMonitor (MPL-2.0), shipped inside the Wallgates installer as a hidden
+  component, and the Microsoft-signed PawnIO driver (downloaded from its official release and
+  signature-checked only when you enable it).
+- One administrator prompt to enable; afterwards it starts with Wallgates without prompts and stops
+  30 seconds after Wallgates closes.
+- *Disable and remove*, or uninstalling Wallgates, removes the component and PawnIO (only if Wallgates
+  installed it). Updates keep it enabled.
+- HWiNFO is still supported as an alternative source.
+- The Windows download is now the setup `.exe` only (the MSI could not clean up advanced sensors).
+
 ## 0.4.0
 **System Terminal 2.0**: a complete redesign with much more data.
 - Four hardware cards (**CPU, GPU, RAM, SSD**), each with load and temperature gauges, a combined

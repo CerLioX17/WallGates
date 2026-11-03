@@ -6,7 +6,7 @@
   "entry": "index.html",
   "preview": "preview.jpg",
   "license": "CC-BY-4.0",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "tags": [
     "system",
     "monitor",
@@ -158,7 +158,7 @@
       "default": 92
     },
     "n1": {
-      "label": "CPU and RAM temperatures on Windows need HWiNFO (free) running with “Shared Memory Support”. GPU and SSD temperatures work out of the box.",
+      "label": "CPU and RAM temperatures and fans on Windows: turn on Wallgates → Settings → Advanced sensors (one click). GPU and SSD temperatures work out of the box.",
       "type": "note"
     },
     "g4": {

@@ -86,11 +86,12 @@ Feeds run only while a wallpaper that asked for them is visible and not paused.
 `disks[]: { name, mount, used, total }`, `net: { rx, tx }` (bytes/s),
 `processes[]: { name, cpu, memory, count }` (top 10 by CPU, grouped by name), `memoryHogs[]`,
 `processCount`, `uptime`, `host`, `os`, `sensors[]: { label, unit, value, type }`, and
-`sources.temperatures` (`hwinfo`, `gpu-driver`, `system` or null).
+`sources.temperatures` (`wallgates-sensors`, `hwinfo`, `gpu-driver`, `system` or null).
 
-On Windows, GPU data comes from the driver (as in Task Manager). CPU temperature and every other
-sensor become available when [HWiNFO](https://www.hwinfo.com) runs with *Shared Memory Support* enabled.
-Wallgates only reads that shared memory, no driver is installed.
+On Windows, GPU and SSD data come from the drivers (as in Task Manager). CPU/RAM temperatures, fans
+and every other sensor become available when the user turns on **Settings → Advanced sensors**
+(LibreHardwareMonitor + PawnIO, one administrator prompt), or when
+[HWiNFO](https://www.hwinfo.com) runs with *Shared Memory Support* enabled.
 
 ## Market data
 
