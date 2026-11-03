@@ -335,7 +335,11 @@ pub fn parse_onvista_venue(id: &str, snap: &Value, venue: &str) -> Option<Value>
         // Requested venue missing: take the most recently traded one (a stale regional quote gives wrong daily moves).
         .or_else(|| if names.is_empty() { None } else { list.iter().copied().max_by_key(fresh) })
         .or_else(|| find_quote(snap))?;
-    parse_onvista_quote(id, snap, q)
+    let mut out = parse_onvista_quote(id, snap, q)?;
+    let venues: Vec<Value> = list.iter().map(|q| json!({ "venue": q.get("market").and_then(|m| m.get("name")), "last": q.get("last"),
+        "previousLast": q.get("previousLast"), "time": q.get("datetimeLast") })).collect();
+    out["venues"] = json!(venues);
+    Some(out)
 }
 
 #[cfg_attr(not(test), allow(dead_code))]
@@ -501,6 +505,7 @@ impl Markets {
         let mut bases = BTreeSet::new();
         let mut done = BTreeSet::new();
         let mut currencies_seen: Vec<String> = Vec::new();
+        let mut diagnostics: Vec<Value> = Vec::new();
         for req in requests {
             bases.insert(req.currency.clone());
             for id in &req.ids {
@@ -519,12 +524,25 @@ impl Markets {
                 let yahoo = |sym: &Result<String, String>| sym.clone()
                     .and_then(|sym| Self::chart(&agent, &sym))
                     .and_then(|c| parse_chart(id, &c).ok_or_else(|| format!("{id}: no data")));
+                // Every attempt is recorded so the "Refresh prices" check can show exactly what happened.
+                let mut tried: Vec<Value> = Vec::new();
+                let mut note = |src: &str, r: &Result<Value, String>| tried.push(match r {
+                    Ok(q) => json!({ "source": src, "ok": true, "venue": q.get("exchange"), "price": q.get("price") }),
+                    Err(e) => json!({ "source": src, "ok": false, "error": e }),
+                });
                 let result = if !venue.is_empty() && is_isin(id) {
                     // Live price from the chosen venue; Yahoo only as a fallback.
-                    Self::onvista_venue(&agent, id, &venue).or_else(|e| yahoo(&yahoo_symbol).map_err(|_| e))
+                    let r = Self::onvista_venue(&agent, id, &venue);
+                    note(&format!("onvista ({venue})"), &r);
+                    r.or_else(|e| { let y = yahoo(&yahoo_symbol); note("yahoo", &y); y.map_err(|_| e) })
                 } else {
-                    yahoo(&yahoo_symbol).or_else(|e| if is_isin(id) { Self::onvista(&agent, id).map_err(|_| e) } else { Err(e) })
+                    let y = yahoo(&yahoo_symbol);
+                    note("yahoo", &y);
+                    y.or_else(|e| if is_isin(id) { let r = Self::onvista(&agent, id); note("onvista", &r); r.map_err(|_| e) } else { Err(e) })
                 };
+                let diag = json!({ "id": id, "choice": if spec.is_empty() { req.source.clone() } else { spec.clone() },
+                    "yahooSymbol": yahoo_symbol.as_ref().ok(), "yahooLookupError": yahoo_symbol.as_ref().err(), "attempts": tried });
+                diagnostics.push(diag.clone());
                 let result = result.map(|mut q| {
                     // Daily history always comes from the Yahoo listing (weeks/months/years: venue differences are tiny).
                     if req.history {
@@ -538,6 +556,7 @@ impl Markets {
                             q["historySymbol"] = json!(sym);
                         }
                     }
+                    q["diag"] = diag.clone();
                     q
                 });
                 match result {
@@ -579,6 +598,7 @@ impl Markets {
             "quotes": quotes,
             "fx": fx,
             "fxPrev": fx_prev,
+            "diagnostics": diagnostics,
             "errors": errors,
         })
     }

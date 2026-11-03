@@ -23,7 +23,7 @@ It tells you how the project is laid out, how to check your work, and the rules 
 
 Tools: `status`, `list_wallpapers`, `get_wallpaper`, `set_wallpaper` (per display: 1, 2, … or `all`),
 `set_options`, `reset_options`, `duplicate_wallpaper`, `create_wallpaper`, `list_files`, `read_file`,
-`write_file`, `pause`, `next_wallpaper`, `authoring_guide`.
+`write_file`, `check_prices`, `pause`, `next_wallpaper`, `authoring_guide`.
 
 Typical customisation of a built-in wallpaper:
 `get_wallpaper builtin/system-terminal` → `duplicate_wallpaper` → `read_file`/`write_file` on the copy →

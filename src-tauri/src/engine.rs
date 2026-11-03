@@ -36,6 +36,9 @@ pub struct Needs {
     pub markets: Vec<(String, feeds::markets::Request)>,
 }
 
+/// Shared market-data client: the engine loop and the "Refresh prices" button use the same caches.
+pub static MARKETS: std::sync::OnceLock<std::sync::Arc<std::sync::Mutex<feeds::markets::Markets>>> = std::sync::OnceLock::new();
+
 #[derive(Default)]
 pub struct Runtime {
     pub slots: Vec<Slot>,
@@ -619,7 +622,7 @@ pub fn rebuild(app: &AppHandle) {
 
 // ------------------------------------------------------------------ loops
 
-fn emit_to_labels<S: Serialize + Clone>(app: &AppHandle, labels: &[String], event: &str, payload: S) {
+pub(crate) fn emit_to_labels<S: Serialize + Clone>(app: &AppHandle, labels: &[String], event: &str, payload: S) {
     for l in labels {
         let _ = app.emit_to(l.as_str(), event, payload.clone());
     }
@@ -632,7 +635,7 @@ pub fn spawn_slow_loop(app: AppHandle) {
         .spawn(move || {
             let mut tick: u64 = 0;
             let mut system = feeds::system::SystemFeed::new(app.state::<AppState>().paths.data.clone());
-            let markets = std::sync::Arc::new(std::sync::Mutex::new(feeds::markets::Markets::new(&app.state::<AppState>().paths.data)));
+            let markets = MARKETS.get_or_init(|| std::sync::Arc::new(std::sync::Mutex::new(feeds::markets::Markets::new(&app.state::<AppState>().paths.data)))).clone();
             let markets_busy = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
             let mut last_markets: Option<Instant> = None;
             let mut markets_key = String::new();
@@ -699,7 +702,7 @@ pub fn spawn_slow_loop(app: AppHandle) {
                 if !needs.markets.is_empty() {
                     let reqs: Vec<feeds::markets::Request> = needs.markets.iter().map(|(_, r)| r.clone()).collect();
                     let refresh = reqs.iter().map(|r| r.refresh_secs).min().unwrap_or(60);
-                    let key = format!("{:?}", reqs.iter().map(|r| (&r.ids, &r.market, &r.currency)).collect::<Vec<_>>());
+                    let key = format!("{:?}", reqs.iter().map(|r| (&r.ids, &r.market, &r.currency, &r.source, &r.listings)).collect::<Vec<_>>());
                     let due = last_markets.is_none_or(|t| t.elapsed() >= Duration::from_secs(refresh)) || key != markets_key;
                     if due && !markets_busy.swap(true, std::sync::atomic::Ordering::SeqCst) {
                         last_markets = Some(Instant::now());

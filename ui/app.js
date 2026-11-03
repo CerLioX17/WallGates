@@ -17,6 +17,7 @@ const ICONS = {
   sparkles: P('<path d="M12 3l1.8 4.7L18.5 9.5l-4.7 1.8L12 16l-1.8-4.7L5.5 9.5l4.7-1.8z"/><path d="M19 15l.8 2.2L22 18l-2.2.8L19 21l-.8-2.2L16 18l2.2-.8z"/>'),
   code: P('<path d="M16 18l6-6-6-6M8 6l-6 6 6 6"/>'),
   settings: P('<circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/>'),
+  refresh: P('<path d="M21 12a9 9 0 1 1-2.6-6.4L21 8"/><path d="M21 3v5h-5"/>'),
   pause: P('<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>'),
   play: P('<path d="M6 4l14 8-14 8z"/>'),
   next: P('<path d="M5 4l10 8-10 8zM19 5v14"/>'),
@@ -111,6 +112,36 @@ function modal(build) {
   back.append(box);
   root.append(back);
   return close;
+}
+
+// "Refresh prices": fetch now and show, per instrument, the ISIN, who answered and what it returned.
+async function checkPrices(w) {
+  const body = el('div', { class: 'mk-report' }, el('p', { class: 'muted' }, t('mk.loading')));
+  modal((close) => [el('h2', {}, t('mk.title')), body, el('div', { class: 'actions' }, el('button', { class: 'btn primary small', onclick: close }, 'OK'))]);
+  let r;
+  try { r = await call('markets_check', { id: w.id }); } catch (e) { body.replaceChildren(el('p', { class: 'mk-bad' }, `✗ ${e}`)); return; }
+  const n = (v, d = 2) => (typeof v === 'number' ? v.toLocaleString(undefined, { minimumFractionDigits: d, maximumFractionDigits: d }) : '');
+  const when = (v) => { if (v == null) return ''; const d = new Date(typeof v === 'number' ? v * 1000 : v); return isNaN(d) ? '' : d.toLocaleString(undefined, { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }); };
+  const byId = Object.fromEntries((r.quotes || []).map((q) => [q.id, q]));
+  const rows = (r.diagnostics || []).map((d) => {
+    const q = byId[d.id];
+    const chg = q && q.previousClose ? ((q.price - q.previousClose) / q.previousClose) * 100 : null;
+    const attempts = (d.attempts || []).map((a) => a.ok ? `✓ ${a.source}${a.venue ? ' · ' + a.venue : ''}` : `✗ ${a.source}: ${a.error}`).join('\n');
+    const venues = (q?.venues || []).map((v) => `${v.venue}: ${n(v.last)}${v.time ? ' (' + when(v.time) + ')' : ''}`).join('\n');
+    return el('tr', { class: q ? '' : 'mk-miss' },
+      el('td', {}, el('strong', {}, d.id), el('div', { class: 'faint' }, `${t('mk.choice')}: ${d.choice}`), d.yahooSymbol ? el('div', { class: 'faint' }, `Yahoo: ${d.yahooSymbol}`) : null),
+      el('td', {}, q ? `${q.source === 'onvista' ? 'onvista' : 'Yahoo'} · ${q.exchange || ''}` : t('mk.none'), el('div', { class: 'faint', style: 'white-space:pre-line' }, attempts)),
+      el('td', { class: 'num' }, q ? `${n(q.price, q.price < 10 ? 4 : 2)} ${q.currency || ''}` : ''),
+      el('td', { class: 'num' }, q ? n(q.previousClose, q.previousClose < 10 ? 4 : 2) : ''),
+      el('td', { class: 'num ' + (chg > 0 ? 'mk-up' : chg < 0 ? 'mk-bad' : '') }, chg == null ? '' : `${chg > 0 ? '+' : ''}${n(chg)}%`),
+      el('td', {}, q ? when(q.time) : '', venues ? el('div', { class: 'faint', style: 'white-space:pre-line' }, venues) : null));
+  });
+  const ok = (r.quotes || []).length, total = (r.diagnostics || []).length;
+  body.replaceChildren(
+    el('p', { class: ok === total ? 'mk-up' : 'mk-bad' }, `${ok === total ? '✓' : '⚠'} ${t('mk.summary', { ok, total })} · ${when(r.updated)}`),
+    el('p', { class: 'faint' }, t('mk.isinNote')),
+    el('div', { class: 'mk-scroll' }, el('table', { class: 'mk-table' },
+      el('tr', {}, ...['mk.instrument', 'mk.source', 'mk.price', 'mk.prev', 'mk.today', 'mk.time'].map((k) => el('th', {}, t(k)))), ...rows)));
 }
 
 function fileUrl(w, rel) {
@@ -470,6 +501,8 @@ async function renderDetails(force = false) {
         ? el('button', { class: 'btn small', onclick: () => openEditor(w.id) }, icon('edit'), t('det.edit'))
         : el('button', { class: 'btn small', onclick: async () => { const id = await call('duplicate_wallpaper', { id: w.id }); await refreshLibrary(); openEditor(id); } }, icon('copy'), t('det.duplicate')),
       el('button', { class: 'btn small ghost', onclick: () => call('export_wallpaper', { id: w.id }).then((ok) => ok && toast('✓')) }, icon('package'), t('det.export'))),
+    (m.capabilities || []).includes('markets')
+      ? el('div', { class: 'actions' }, el('button', { class: 'btn small', onclick: () => checkPrices(w) }, icon('refresh'), t('mk.refresh'))) : null,
     el('h3', {}, t('det.customize')),
     props.length ? el('div', { class: 'props' }, ...props) : el('p', { class: 'muted' }, t('det.noOptions')),
     props.length ? el('div', { class: 'actions' },

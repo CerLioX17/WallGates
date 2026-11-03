@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.10.4
+**"Refresh prices & check sources" button** for market wallpapers (wallpaper details → above Customize).
+It fetches every instrument immediately, updates the desktop, and shows a report per ISIN: your chosen source,
+the Yahoo ticker looked up from the ISIN, every attempt (✓ / ✗ with the exact error), the source and venue that
+answered, price, previous close, today's change, last trade time and all venues onvista offers.
+Also available to coding agents as the `check_prices` MCP tool.
+- Fix: changing *Live prices* or *Per-instrument source* now refetches immediately (it waited for the next cycle).
+
 ## 0.10.3
 **Trade Republic Portfolio: fixes impossible week / month / YTD / 1-year amounts.**
 - Price history from a listing in another currency (e.g. a London line quoted in **pence**) was read in the live

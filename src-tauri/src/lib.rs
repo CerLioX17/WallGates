@@ -726,8 +726,44 @@ fn agent_call(app: &AppHandle, name: &str, args: &Value) -> Result<Value, String
             ok(json!({ "paused": p }))
         }
         "next_wallpaper" => { engine::next(app); ok(json!("ok")) }
+        "check_prices" => tauri::async_runtime::block_on(markets_check(app.clone(), s("id")?)),
         _ => Err(format!("unknown tool: {name}")),
     }
+}
+
+/// "Refresh prices": fetch a market wallpaper's instruments right now, push them to the desktop and return a report
+/// of every attempt per instrument (ISIN, venue chosen, source that answered, price, previous close, time, errors).
+#[tauri::command]
+async fn markets_check(app: AppHandle, id: String) -> Result<Value, String> {
+    let (req, enabled) = {
+        let state = app.state::<AppState>();
+        let w = library::find(&state.paths, &id).ok_or("wallpaper not found")?;
+        let cfg = state.config();
+        (feeds::markets::request_from(&w.values(cfg.properties.get(&id))), cfg.integrations.markets)
+    };
+    if !enabled {
+        return Err("Market data is switched off in Settings → Privacy".into());
+    }
+    let app2 = app.clone();
+    let req2 = req.clone();
+    let data = tauri::async_runtime::spawn_blocking(move || {
+        let m = engine::MARKETS.get_or_init(|| std::sync::Arc::new(std::sync::Mutex::new(feeds::markets::Markets::new(&app2.state::<AppState>().paths.data)))).clone();
+        let mut m = m.lock().map_err(|_| "market client busy".to_string())?;
+        Ok::<Value, String>(m.fetch(&[req2]))
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+    {
+        let st = app.state::<AppState>();
+        st.rt().feed_cache.insert("markets".into(), data.clone());
+        let labels: Vec<String> = st.rt().needs.markets.iter().filter(|(_, r)| *r == req).map(|(l, _)| l.clone()).collect();
+        engine::emit_to_labels(&app, &labels, "wf-feed", json!({ "kind": "markets", "data": data }));
+    }
+    let quotes: Vec<Value> = data["quotes"].as_array().cloned().unwrap_or_default().into_iter().map(|q| json!({
+        "id": q["id"], "symbol": q["symbol"], "exchange": q["exchange"], "source": q.get("source").cloned().unwrap_or(json!("yahoo")),
+        "currency": q["currency"], "price": q["price"], "previousClose": q["previousClose"], "time": q["time"],
+        "historySymbol": q.get("historySymbol"), "venues": q.get("venues"), "diag": q.get("diag") })).collect();
+    Ok(json!({ "updated": data["updated"], "quotes": quotes, "diagnostics": data["diagnostics"], "errors": data["errors"], "fx": data["fx"] }))
 }
 
 #[tauri::command]
@@ -883,6 +919,7 @@ pub fn run() {
             sensors_enable,
             sensors_disable,
             agent_info,
+            markets_check,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Wallgates");

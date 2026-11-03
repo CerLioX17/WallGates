@@ -78,6 +78,8 @@ pub fn tools() -> Value {
           "inputSchema": s(json!({ "id": id, "path": { "type": "string" } }), &["id", "path"]) },
         { "name": "write_file", "description": "Write a text file of a USER wallpaper (duplicate built-ins first). The desktop reloads immediately; then call status to see compile/script errors.",
           "inputSchema": s(json!({ "id": id, "path": { "type": "string" }, "content": { "type": "string" } }), &["id", "path", "content"]) },
+        { "name": "check_prices", "description": "For wallpapers with market data: fetch every instrument now and report, per ISIN, the source and venue that answered, price, previous close, time and any errors.",
+          "inputSchema": s(json!({ "id": id }), &["id"]) },
         { "name": "pause", "description": "Pause or resume all wallpapers.",
           "inputSchema": s(json!({ "paused": { "type": "boolean" } }), &["paused"]) },
         { "name": "next_wallpaper", "description": "Advance playlists / switch to the next wallpaper.",
