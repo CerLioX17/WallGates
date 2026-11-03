@@ -19,6 +19,8 @@ pub struct SystemFeed {
     tick: u64,
     #[cfg(windows)]
     gpu: super::gpu_windows::GpuProbe,
+    #[cfg(windows)]
+    drives: super::drives_windows::DriveProbe,
 }
 
 impl Default for SystemFeed {
@@ -34,6 +36,8 @@ impl Default for SystemFeed {
             tick: 0,
             #[cfg(windows)]
             gpu: super::gpu_windows::GpuProbe::new(),
+            #[cfg(windows)]
+            drives: super::drives_windows::DriveProbe::new(),
         }
     }
 }
@@ -61,9 +65,8 @@ impl SystemFeed {
         sys.refresh_memory();
         // Processes are the expensive part: every sample (2 s) is fine for a visible dashboard.
         sys.refresh_processes(ProcessesToUpdate::All, true);
-        if self.tick % 15 == 1 {
-            self.disks.refresh(true);
-        }
+        // Refreshing every sample keeps per-disk read/write deltas accurate.
+        self.disks.refresh(self.tick % 15 == 1);
         self.networks.refresh(true);
         self.components.refresh(true);
 
@@ -99,6 +102,7 @@ impl SystemFeed {
             .map(|(name, (cpu, mem, count))| json!({ "name": name, "cpu": round1(*cpu), "memory": mem, "count": count }))
             .collect();
 
+        let secs_disk = self.last_net.elapsed().as_secs_f64().max(0.5);
         let disks: Vec<Value> = self
             .disks
             .list()
@@ -111,6 +115,8 @@ impl SystemFeed {
                     "total": d.total_space(),
                     "used": d.total_space().saturating_sub(d.available_space()),
                     "removable": d.is_removable(),
+                    "read": (d.usage().read_bytes as f64 / secs_disk).round(),
+                    "write": (d.usage().written_bytes as f64 / secs_disk).round(),
                 })
             })
             .collect();
@@ -129,6 +135,21 @@ impl SystemFeed {
             .filter_map(|c| c.temperature().map(|t| (c.label().to_string(), t as f64)))
             .collect();
 
+        let find_comp = |keys: &[&str]| {
+            comp.iter()
+                .filter(|(l, v)| keys.iter().any(|k| l.to_ascii_lowercase().contains(k)) && *v > 0.0 && *v < 130.0)
+                .map(|(_, v)| *v)
+                .fold(None, |m: Option<f64>, v| Some(m.map_or(v, |m| m.max(v))))
+        };
+        let ram_temp = find_comp(&["dimm", "spd", "memory"]);
+        let drive_temp = find_comp(&["nvme", "composite", "drive", "ssd"]);
+        // Physical drives: fallback list from mounted volumes (Linux / macOS).
+        let drives: Vec<Value> = disks
+            .iter()
+            .filter(|d| !d["removable"].as_bool().unwrap_or(false))
+            .take(4)
+            .map(|d| json!({ "model": d["name"], "letters": d["mount"], "temp": drive_temp, "active": Value::Null, "read": d["read"], "write": d["write"] }))
+            .collect();
         let total = sys.total_memory();
         let used = sys.used_memory();
         #[cfg_attr(not(windows), allow(unused_mut))]
@@ -141,6 +162,10 @@ impl SystemFeed {
             "memoryUsed": used,
             "memoryTotal": total,
             "memory": if total > 0 { round1(used as f64 / total as f64 * 100.0) } else { 0.0 },
+            "memoryAvailable": sys.available_memory(),
+            "ramTemp": ram_temp.map(round1),
+            "drives": drives,
+            "fans": [],
             "swapUsed": sys.used_swap(),
             "swapTotal": sys.total_swap(),
             "disks": disks,
@@ -160,6 +185,10 @@ impl SystemFeed {
         {
             if let Some(gpu) = self.gpu.sample() {
                 out["gpu"] = gpu;
+            }
+            let probed = self.drives.sample();
+            if !probed.is_empty() {
+                out["drives"] = json!(probed);
             }
             if let Some(hw) = super::hwinfo::read() {
                 let pairs: Vec<(String, f64)> = hw
@@ -189,6 +218,30 @@ impl SystemFeed {
                 if let Some(p) = find(&["CPU Package Power", "CPU PPT"]) {
                     out["cpuPower"] = json!(p);
                 }
+                // RAM temperature: DDR5 SPD hub / DIMM sensors (hottest module).
+                let ram = hw
+                    .iter()
+                    .filter(|r| r.kind == "temperature")
+                    .filter(|r| { let l = r.label.to_ascii_lowercase(); l.contains("dimm") || l.contains("spd hub") || l.starts_with("memory") })
+                    .map(|r| r.value)
+                    .fold(None, |m: Option<f64>, v| Some(m.map_or(v, |m| m.max(v))));
+                if let Some(t) = ram {
+                    out["ramTemp"] = json!(round1(t));
+                }
+                // Drive temperatures HWiNFO knows about fill gaps left by the driver query.
+                let drive_temps: Vec<f64> = hw.iter().filter(|r| r.kind == "temperature" && r.label.starts_with("Drive Temperature") && !r.label.contains("2")).map(|r| r.value).collect();
+                if let Some(list) = out["drives"].as_array_mut() {
+                    for (d, t) in list.iter_mut().filter(|d| d["temp"].is_null()).zip(drive_temps) {
+                        d["temp"] = json!(round1(t));
+                    }
+                }
+                let fans: Vec<Value> = hw
+                    .iter()
+                    .filter(|r| r.kind == "fan" && r.value > 0.0)
+                    .take(6)
+                    .map(|r| json!({ "label": r.label, "rpm": r.value.round() }))
+                    .collect();
+                out["fans"] = json!(fans);
                 out["sensors"] = json!(hw
                     .iter()
                     .take(400)

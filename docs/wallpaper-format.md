@@ -81,7 +81,8 @@ Feeds run only while a wallpaper that asked for them is visible and not paused.
 `Wallgates.on('system', s => ...)` receives:
 `cpu`, `cpuName`, `cores[]`, `cpuFreq` (MHz), `cpuTemp` (°C or null), `cpuPower`, `memory` (%),
 `memoryUsed`, `memoryTotal`, `swapUsed`, `swapTotal`,
-`gpu: { name, usage, vramUsed, vramTotal, temp, fan, power }` (or null),
+`gpu: { name, usage, vramUsed, vramTotal, temp, fan, power }` (or null), `memoryAvailable`, `ramTemp`,
+`drives[]: { model, letters, temp, active, read, write }` (physical drives), `fans[]: { label, rpm }`,
 `disks[]: { name, mount, used, total }`, `net: { rx, tx }` (bytes/s),
 `processes[]: { name, cpu, memory, count }` (top 10 by CPU, grouped by name), `memoryHogs[]`,
 `processCount`, `uptime`, `host`, `os`, `sensors[]: { label, unit, value, type }`, and

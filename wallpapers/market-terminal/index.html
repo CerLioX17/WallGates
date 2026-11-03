@@ -19,7 +19,7 @@
   html, body { margin: 0; height: 100%; overflow: hidden; }
   body {
     background: radial-gradient(70% 60% at 85% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%), var(--bg);
-    color: var(--fg); font: calc(0.82vw * var(--fs)) / 1.35 "Cascadia Mono", "Cascadia Code", "JetBrains Mono", Consolas, ui-monospace, monospace;
+    color: var(--fg); font: calc(min(0.82vw, 1.46vh) * var(--fs)) / 1.35 "Cascadia Mono", "Cascadia Code", "JetBrains Mono", Consolas, ui-monospace, monospace;
     display: grid; grid-template-rows: auto auto 1fr auto; gap: 0.9vw; padding: 1.6vw 2vw;
   }
   body.glow { text-shadow: 0 0 0.45em color-mix(in srgb, var(--fg) 45%, transparent); }

@@ -727,7 +727,7 @@ pub fn spawn_slow_loop(app: AppHandle) {
                     };
                     if let Some(loc) = loc {
                         let key = format!("{}|{}|{}", loc.latitude, loc.longitude, f);
-                        let due = last_weather.is_none_or(|t| t.elapsed() > Duration::from_secs(20 * 60)) || key != weather_key;
+                        let due = last_weather.is_none_or(|t| t.elapsed() > Duration::from_secs(15 * 60)) || key != weather_key;
                         if due {
                             last_weather = Some(Instant::now());
                             weather_key = key;

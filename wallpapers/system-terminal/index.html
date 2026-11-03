@@ -5,67 +5,121 @@
 <script src="/__wallgates/wallgates-sdk.js"></script>
 <style>
   :root {
-    --bg: #05040b; --fg: #d9dcff; --dim: #6e7199; --hi: #22d3ee; --hi2: #a78bfa; --warn: #fbbf24; --bad: #fb7185; --ok: #34d399;
-    --line: rgba(167, 139, 250, 0.25); --fs: 1; --glow: 0.55; --scan: 0.35; --noise: 0.08; --vig: 0.55;
+    --bg: #05040b; --fg: #d9dcff; --dim: #6e7199; --hi: #22d3ee; --hi2: #a78bfa; --hi3: #ec4899;
+    --warn: #fbbf24; --bad: #fb7185; --ok: #34d399; --line: rgba(167, 139, 250, 0.24);
+    --fs: 1; --glow: 0.55; --scan: 0.35; --noise: 0.05; --vig: 0.55;
     --logo: linear-gradient(180deg, #22d3ee, #8b5cf6 55%, #ec4899);
   }
-  body.mono { --bg: #0b0b0b; --fg: #d6d6d6; --dim: #777; --hi: #ffffff; --hi2: #bdbdbd; --line: rgba(255,255,255,0.16); --logo: linear-gradient(180deg, #fff, #8a8a8a); }
-  body.amber { --bg: #0a0600; --fg: #ffc04d; --dim: #a5741f; --hi: #ffd27a; --hi2: #ff9d00; --ok: #ffd27a; --line: rgba(255,170,0,0.25); --logo: linear-gradient(180deg, #ffe0a0, #ff9d00); }
-  body.green { --bg: #010803; --fg: #5dff94; --dim: #2d8a51; --hi: #b6ffcb; --hi2: #39ff78; --ok: #b6ffcb; --line: rgba(57,255,120,0.22); --logo: linear-gradient(180deg, #d4ffe0, #39ff78); }
+  body.mono { --bg: #0b0b0b; --fg: #d6d6d6; --dim: #767676; --hi: #ffffff; --hi2: #a8a8a8; --hi3: #d0d0d0; --ok: #e0e0e0; --line: rgba(255,255,255,0.15); --logo: linear-gradient(180deg, #fff, #8a8a8a); }
+  body.amber { --bg: #0a0600; --fg: #ffc04d; --dim: #a5741f; --hi: #ffd27a; --hi2: #ff9d00; --hi3: #ffb347; --ok: #ffd27a; --line: rgba(255,170,0,0.24); --logo: linear-gradient(180deg, #ffe0a0, #ff9d00); }
+  body.green { --bg: #010803; --fg: #5dff94; --dim: #2d8a51; --hi: #b6ffcb; --hi2: #39ff78; --hi3: #8affb0; --ok: #b6ffcb; --line: rgba(57,255,120,0.22); --logo: linear-gradient(180deg, #d4ffe0, #39ff78); }
 
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden; }
   body {
-    background: radial-gradient(80% 70% at 50% 40%, color-mix(in srgb, var(--hi2) 9%, var(--bg)), var(--bg));
-    color: var(--fg); font: calc(0.78vw * var(--fs)) / 1.4 "Cascadia Mono", "Cascadia Code", "JetBrains Mono", Consolas, ui-monospace, monospace;
+    background: radial-gradient(80% 70% at 50% 35%, color-mix(in srgb, var(--hi2) 9%, var(--bg)), var(--bg));
+    color: var(--fg); font: calc(min(0.72vw, 1.28vh) * var(--fs)) / 1.38 "Cascadia Mono", "Cascadia Code", "JetBrains Mono", Consolas, ui-monospace, monospace;
     text-shadow: 0 0 calc(0.6em * var(--glow)) color-mix(in srgb, var(--fg) calc(var(--glow) * 70%), transparent);
   }
-  body.aberration .screen { text-shadow: -0.06em 0 rgba(255, 40, 80, 0.35), 0.06em 0 rgba(0, 220, 255, 0.35), 0 0 calc(0.6em * var(--glow)) color-mix(in srgb, var(--fg) calc(var(--glow) * 70%), transparent); }
+  body.aberration .screen { text-shadow: -0.06em 0 rgba(255, 40, 80, 0.32), 0.06em 0 rgba(0, 220, 255, 0.32), 0 0 calc(0.6em * var(--glow)) color-mix(in srgb, var(--fg) calc(var(--glow) * 70%), transparent); }
   body.flicker .screen { animation: flicker 6s infinite; }
-  body.paused .screen { animation: none; }
+  body.paused .screen, body.paused .bad { animation: none; }
   @keyframes flicker { 0%, 97%, 100% { opacity: 1; } 98% { opacity: 0.86; } 99% { opacity: 0.95; } }
 
   .fx { position: fixed; inset: 0; pointer-events: none; z-index: 20; }
   .scan { background: repeating-linear-gradient(0deg, rgba(0,0,0,0.5) 0 1px, transparent 1px 3px); opacity: var(--scan); }
-  .vig { background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.9)); opacity: var(--vig); }
+  .vig { background: radial-gradient(ellipse at center, transparent 58%, rgba(0,0,0,0.9)); opacity: var(--vig); }
   canvas.noise { opacity: var(--noise); width: 100%; height: 100%; mix-blend-mode: screen; }
 
-  .screen { position: absolute; inset: 0; padding: 2.2vw 2.6vw; display: grid; gap: 1.1vw;
-    grid-template-columns: 1.15fr 1fr 1fr; grid-template-rows: auto 1fr 1fr auto; }
-  .boot { position: absolute; inset: 0; padding: 3vw; white-space: pre-wrap; z-index: 5; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .screen { position: absolute; inset: 0; padding: min(1.7vw, 3vh) 2vw min(1.4vw, 2.5vh); display: grid; gap: min(1.3vw, 2.3vh) 1vw;
+    grid-template-columns: repeat(4, 1fr); grid-template-rows: auto minmax(0, 1.12fr) minmax(0, 1fr) auto; }
+  .boot { position: absolute; inset: 0; padding: 3vw; white-space: pre-wrap; z-index: 5; background: var(--bg);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; }
   .boot > div { min-width: 34em; }
   .boot pre, .logo { margin: 0; font-family: inherit; line-height: 1.05; background: var(--logo); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; }
 
-  header { grid-column: 1 / -1; display: flex; align-items: center; gap: 2vw; border-bottom: 1px solid var(--line); padding-bottom: 0.8vw; }
-  header .logo { font-size: 0.42em; }
-  header h1 { margin: 0; font-size: 1.5em; letter-spacing: 0.25em; font-weight: 700; color: var(--hi); }
-  header .meta { color: var(--dim); }
-  header .clock { margin-left: auto; text-align: right; }
-  header .clock b { font-size: 2.4em; font-weight: 300; color: var(--fg); letter-spacing: 0.05em; display: block; line-height: 1; }
-
-  .panel { border: 1px solid var(--line); padding: 1.1vw 1.1vw 0.9vw; min-height: 0; overflow: visible; position: relative; background: color-mix(in srgb, var(--bg) 70%, transparent); }
-  .panel::before { content: attr(data-title); position: absolute; top: -0.75em; left: 0.8vw; padding: 0 0.5em; background: var(--bg); z-index: 1; line-height: 1.5; color: var(--hi2); letter-spacing: 0.2em; font-size: 0.85em; }
-  .row { display: flex; justify-content: space-between; gap: 1em; white-space: nowrap; }
   .k { color: var(--dim); }
-  .big { font-size: 2.6em; line-height: 1.05; color: var(--hi); font-weight: 300; }
-  .bar { font-family: inherit; letter-spacing: -0.04em; color: var(--hi); }
-  .bar .e { color: color-mix(in srgb, var(--dim) 55%, transparent); }
-  .warn { color: var(--warn) !important; } .bad { color: var(--bad) !important; animation: pulse 1s infinite; }
-  body.paused .bad { animation: none; }
+  .hi { color: var(--hi); }
+  .row { display: flex; justify-content: space-between; align-items: baseline; gap: 0.8em; white-space: nowrap; }
+  .warn { color: var(--warn) !important; }
+  .bad { color: var(--bad) !important; animation: pulse 1s infinite; }
   @keyframes pulse { 50% { opacity: 0.45; } }
-  .cores { display: grid; grid-template-columns: repeat(auto-fill, minmax(4.2em, 1fr)); gap: 0.25vw 0.6vw; margin-top: 0.5vw; font-size: 0.85em; }
-  canvas.graph { width: 100%; height: 4vw; display: block; margin-top: 0.4vw; }
-  .procs { width: 100%; border-collapse: collapse; }
-  .procs td { padding: 0.12vw 0; white-space: nowrap; }
-  .procs td:nth-child(2), .procs td:nth-child(3) { text-align: right; }
-  .procs td:first-child { max-width: 11vw; overflow: hidden; text-overflow: ellipsis; }
-  .log { font-size: 0.9em; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; overflow: hidden; }
-  .log p { margin: 0.1vw 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .log p .t { color: var(--dim); }
-  footer { grid-column: 1 / -1; display: flex; gap: 2vw; align-items: center; color: var(--dim); border-top: 1px solid var(--line); padding-top: 0.6vw; }
-  .meter { flex: 1; display: flex; gap: 2px; align-items: flex-end; height: 1.6vw; }
-  .meter i { flex: 1; background: var(--hi2); opacity: 0.85; min-height: 1px; }
   .hidden { display: none !important; }
+
+  /* ---------- header */
+  header { grid-column: 1 / -1; display: grid; grid-template-columns: 1.25fr 1fr 1.6fr; gap: 2vw; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: min(1vw, 1.8vh); }
+  .ident { display: flex; align-items: center; gap: 1.3vw; min-width: 0; }
+  .ident .logo { font-size: 0.42em; }
+  .ident h1 { margin: 0; font-size: 1.55em; letter-spacing: 0.24em; color: var(--hi); }
+  .ident .meta { color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .clock { text-align: center; }
+  .clock .t { font-size: 4.4em; font-weight: 200; line-height: 1; letter-spacing: 0.04em; color: var(--fg); font-variant-numeric: tabular-nums; }
+  .clock .t small { font-size: 0.42em; color: var(--dim); margin-left: 0.15em; }
+  .clock .d { color: var(--dim); letter-spacing: 0.12em; margin-top: 0.35em; }
+  .progress { display: flex; gap: 1.2em; justify-content: center; margin-top: 0.5em; color: var(--dim); font-size: 0.9em; }
+  .progress b { color: var(--hi2); font-weight: 400; }
+  .now { display: grid; grid-template-columns: auto 1fr auto; gap: 1.2vw; align-items: center; }
+  .now svg.wx { width: 4.6em; height: 4.6em; color: var(--hi); }
+  .now .temp { font-size: 3.4em; font-weight: 200; line-height: 1; }
+  .now .cond { color: var(--fg); letter-spacing: 0.06em; }
+  .now .facts { display: grid; grid-template-columns: auto auto; gap: 0.15em 1em; font-size: 0.95em; }
+  .badge { display: inline-block; padding: 0.05em 0.55em; border-radius: 0.3em; font-weight: 700; color: #08080f; text-shadow: none; }
+  .hint { color: var(--dim); font-size: 0.95em; white-space: normal; }
+
+  /* ---------- panels */
+  .panel { border: 1px solid var(--line); padding: min(1.15vw, 2vh) 1.1vw min(0.9vw, 1.6vh); min-height: 0; position: relative; display: flex; flex-direction: column;
+    background: color-mix(in srgb, var(--bg) 72%, transparent); }
+  .panel::before { content: attr(data-title); position: absolute; top: -0.75em; left: 0.8vw; padding: 0 0.5em; background: var(--bg); color: var(--hi2); letter-spacing: 0.22em; font-size: 0.9em; z-index: 1; line-height: 1.5; }
+  .panel .model { color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 0.4vw; }
+
+  .gauges { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6vw; }
+  .gauge { position: relative; aspect-ratio: 1.55; max-height: 15vh; }
+  .gauge svg { width: 100%; height: 100%; overflow: visible; }
+  .gauge .val { position: absolute; left: 0; right: 0; top: 34%; text-align: center; font-size: 2.15em; font-weight: 300; line-height: 1; }
+  .gauge .lab { position: absolute; left: 0; right: 0; bottom: 4%; text-align: center; color: var(--dim); letter-spacing: 0.18em; font-size: 0.8em; }
+  .gauge .need { position: absolute; left: 0; right: 0; bottom: -1.3em; text-align: center; color: var(--dim); font-size: 0.75em; }
+  canvas.graph { width: 100%; flex: 1; min-height: 3.5vh; display: block; margin: 0.4vw 0; }
+  .legend { display: flex; gap: 1em; font-size: 0.8em; color: var(--dim); }
+  .legend i { display: inline-block; width: 1em; height: 2px; vertical-align: middle; margin-right: 0.4em; }
+  .details { display: grid; grid-template-columns: auto 1fr; gap: 0.1vw 0.8vw; margin-top: 0.3vw; }
+  .details dd { margin: 0; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .cores { display: grid; grid-template-columns: repeat(16, 1fr); gap: 2px; margin-top: 0.35vw; }
+  .cores i { height: 1vh; background: var(--hi); opacity: 0.15; }
+  .bar { height: 0.42vw; background: color-mix(in srgb, var(--dim) 30%, transparent); position: relative; margin: 0.25vw 0 0.35vw; }
+  .bar > i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--hi), var(--hi2)); }
+
+  .procs { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  .procs td { padding: 0.32vw 0; white-space: nowrap; }
+  .procs td.n { max-width: 9vw; overflow: hidden; text-overflow: ellipsis; }
+  .procs td.r { text-align: right; padding-left: 0.6em; }
+  .procs .pb { height: 0.25vw; background: color-mix(in srgb, var(--dim) 25%, transparent); margin-top: 0.15vw; position: relative; }
+  .procs .pb i { position: absolute; inset: 0 auto 0 0; background: var(--hi2); }
+  .rank { color: var(--hi2); margin-right: 0.5em; }
+
+  .forecast { grid-column: span 2; }
+  .days { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.8vw; }
+  .days .hint { grid-column: 1 / -1; }
+  .day { text-align: center; border: 1px solid color-mix(in srgb, var(--line) 60%, transparent); padding: 0.5vw 0.3vw; }
+  .day.today { border-color: var(--hi2); }
+  .day .dn { letter-spacing: 0.16em; color: var(--hi2); font-size: 0.85em; }
+  .day svg.wx { width: 2.8em; height: 2.8em; color: var(--hi); margin: 0.2em auto; display: block; }
+  .day .mm { font-size: 1.25em; }
+  .day .mm span { color: var(--dim); }
+  .day .sub { color: var(--dim); font-size: 0.82em; }
+  .sun { display: flex; justify-content: space-between; gap: 1em; margin-top: 0.5vw; color: var(--dim); white-space: nowrap; }
+  .sun b { color: var(--fg); font-weight: 400; }
+  .moon { width: 1.2em; height: 1.2em; vertical-align: middle; }
+
+  footer { grid-column: 1 / -1; display: grid; grid-template-columns: 1.3fr 1.4fr 1.6fr; gap: 1.5vw; align-items: center; color: var(--dim); border-top: 1px solid var(--line); padding-top: 0.7vw; }
+  .media { display: flex; align-items: center; gap: 0.8vw; min-width: 0; }
+  .media .art { width: 2.6vw; height: 2.6vw; flex: none; background: linear-gradient(135deg, var(--hi), var(--hi2)); background-size: cover; background-position: center; filter: saturate(0.9); }
+  .media .txt { min-width: 0; }
+  .media .tt { color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .meter { display: flex; gap: 2px; align-items: flex-end; height: 2.4vw; }
+  .meter i { flex: 1; background: linear-gradient(0deg, var(--hi), var(--hi2)); opacity: 0.85; min-height: 1px; }
+  .log { font-size: 0.92em; overflow: hidden; }
+  .log p { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .log .t { color: var(--dim); }
   .cursor { animation: blink 1s steps(2) infinite; }
   @keyframes blink { 50% { opacity: 0; } }
 </style>
@@ -74,67 +128,54 @@
 <div class="boot" id="boot"></div>
 <div class="screen" id="screen">
   <header>
-    <pre class="logo" id="miniLogo"></pre>
-    <div>
-      <h1>WALLGATES // SYSTEM</h1>
-      <div class="meta" id="hostLine">—</div>
-      <div class="meta" id="opLine"></div>
+    <div class="ident">
+      <pre class="logo" id="miniLogo"></pre>
+      <div style="min-width:0">
+        <h1>WALLGATES // SYSTEM</h1>
+        <div class="meta" id="hostLine">—</div>
+        <div class="meta" id="opLine">—</div>
+      </div>
     </div>
-    <div class="clock"><b id="time">--:--</b><span class="k" id="date"></span></div>
+    <div class="clock">
+      <div class="t" id="time">--:--</div>
+      <div class="d" id="date"></div>
+      <div class="progress" id="progress"></div>
+    </div>
+    <div class="now" id="now"><div class="hint">WEATHER OFFLINE — turn it on in Wallgates → Settings → Weather &amp; location and pick your city.</div></div>
   </header>
 
-  <section class="panel" data-title="CPU" id="cpuPanel" style="grid-row: span 2">
-    <div class="k" id="cpuName">—</div>
-    <div class="row"><span class="big" id="cpuPct">--%</span><span class="big" id="cpuTemp">--°</span></div>
-    <div class="bar" id="cpuBar"></div>
-    <div class="row"><span><span class="k">FREQ </span><span id="cpuFreq">—</span></span><span><span class="k">PWR </span><span id="cpuPower">—</span></span><span><span class="k">PROC </span><span id="procCount">—</span></span></div>
-    <canvas class="graph" id="cpuGraph"></canvas>
-    <div class="cores" id="cores"></div>
-    <div style="margin-top:1vw">
-      <div class="row"><span class="k">MEMORY</span><span id="memText">—</span></div>
-      <div class="bar" id="memBar"></div>
-      <div class="row"><span class="k">SWAP</span><span id="swapText">—</span></div>
-      <div class="row"><span class="k">UPTIME</span><span id="uptime">—</span></div>
-    </div>
-  </section>
+  <section class="panel" data-title="CPU" id="cpuCard"></section>
+  <section class="panel" data-title="GPU" id="gpuCard"></section>
+  <section class="panel" data-title="RAM" id="ramCard"></section>
+  <section class="panel" data-title="SSD" id="ssdCard"></section>
 
-  <section class="panel" data-title="GPU" id="gpuPanel">
-    <div class="k" id="gpuName">—</div>
-    <div class="row"><span class="big" id="gpuPct">--%</span><span class="big" id="gpuTemp">--°</span></div>
-    <div class="bar" id="gpuBar"></div>
-    <div class="row"><span class="k">VRAM</span><span id="vramText">—</span></div>
-    <div class="bar" id="vramBar"></div>
-    <canvas class="graph" id="gpuGraph"></canvas>
-    <div class="row"><span><span class="k">FAN </span><span id="gpuFan">—</span></span><span><span class="k">PWR </span><span id="gpuPower">—</span></span></div>
-  </section>
-
-  <section class="panel" data-title="TOP PROCESSES" id="procPanel">
+  <section class="panel" data-title="TASK MANAGER · TOP 5" id="procPanel">
     <table class="procs"><tbody id="procs"></tbody></table>
   </section>
-
-  <section class="panel" data-title="STORAGE / NETWORK" id="ioPanel">
-    <div id="disks"></div>
-    <div id="netBox" style="margin-top:0.6vw">
-      <div class="row"><span><span class="k">▼ DOWN </span><span id="rx">—</span></span><span><span class="k">▲ UP </span><span id="tx">—</span></span></div>
-      <canvas class="graph" id="netGraph"></canvas>
-    </div>
+  <section class="panel" data-title="NETWORK · FANS" id="netPanel">
+    <div class="row"><span><span class="k">▼ </span><span id="rx">—</span></span><span><span class="k">▲ </span><span id="tx">—</span></span></div>
+    <canvas class="graph" id="netGraph"></canvas>
+    <div class="legend"><span><i style="background:var(--hi)"></i>DOWN</span><span><i style="background:var(--hi3)"></i>UP</span><span id="netPeak"></span></div>
+    <dl class="details" id="fans"></dl>
   </section>
-
-  <section class="panel" data-title="SYSTEM LOG" id="logPanel">
-    <div class="log" id="log"></div>
+  <section class="panel forecast" data-title="FORECAST" id="forecast">
+    <div class="days" id="days"><div class="hint">Turn on weather in Wallgates → Settings → Weather &amp; location to see today and the next 3 days, the UV index and air quality.</div></div>
+    <canvas class="graph" id="hourGraph"></canvas>
+    <div class="legend"><span><i style="background:var(--hi)"></i>TEMP · NEXT 24H</span><span><i style="background:var(--hi2)"></i>RAIN %</span><span id="hourRange"></span></div>
+    <div class="sun" id="sun"></div>
   </section>
 
   <footer>
-    <span id="sources">SENSORS: —</span>
+    <div class="media" id="media"><div class="art" id="art"></div><div class="txt"><div class="tt" id="track">NOTHING PLAYING</div><div id="artist" class="k">♪ play something on Spotify, YouTube…</div></div></div>
     <div class="meter" id="meter"></div>
-    <span>WALLGATES OS <span class="cursor">█</span></span>
+    <div class="log" id="log"></div>
   </footer>
 </div>
 <div class="fx vig"></div>
 <div class="fx scan"></div>
 <canvas class="fx noise" id="noise"></canvas>
 <script>
-// System Terminal — Wallgates built-in wallpaper (CC BY 4.0).
+// System Terminal v2 — Wallgates built-in wallpaper (CC BY 4.0).
 const $ = (id) => document.getElementById(id);
 const LOGO = [
   '            ▄▄▄██████▄▄▄',
@@ -150,172 +191,358 @@ const LOGO = [
   '     ██   ~~  ~~~  ~~~  ~~   ██',
   '  ▀▀▀██▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀██▀▀▀',
 ].join('\n');
-let o = {}, s = null, booted = false;
-const hist = { cpu: [], gpu: [], rx: [], tx: [] };
-const logLines = [];
 const lang = navigator.language || 'en-US';
-const alerts = {};
+let o = {}, s = null, w = null, booted = false;
+const H = { cpu: [], cpuT: [], gpu: [], gpuT: [], ram: [], ramT: [], ssd: [], ssdT: [], rx: [], tx: [] };
+const logLines = [], alerts = {};
 
-const pct = (v) => (v == null ? '--' : Math.round(v)) + '%';
-const bytes = (b) => { if (b == null) return '—'; const u = ['B', 'KB', 'MB', 'GB', 'TB']; let i = 0; while (b >= 1024 && i < 4) { b /= 1024; i++; } return `${b.toFixed(b < 10 && i ? 1 : 0)} ${u[i]}`; };
-const rate = (b) => bytes(b) + '/s';
-const temp = (c) => c == null ? '--°' : o.fahrenheit ? `${Math.round(c * 9 / 5 + 32)}°F` : `${Math.round(c)}°C`;
-function bar(v, width = 28) {
-  const n = Math.round(Math.max(0, Math.min(100, v || 0)) / 100 * width);
-  const span = document.createElement('span');
-  span.append('[', '█'.repeat(n));
-  const e = document.createElement('span'); e.className = 'e'; e.textContent = '·'.repeat(width - n);
-  span.append(e, ']');
-  return span;
-}
-function setBar(id, v, w) { $(id).replaceChildren(bar(v, w)); }
-function level(elm, v, warnAt, badAt) { elm.classList.toggle('warn', v != null && v >= warnAt && v < badAt); elm.classList.toggle('bad', v != null && v >= badAt); }
+// ---------------------------------------------------------------- helpers
+const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+const bytes = (b) => { if (b == null || !isFinite(b)) return '—'; const u = ['B', 'KB', 'MB', 'GB', 'TB']; let i = 0; while (b >= 1024 && i < 4) { b /= 1024; i++; } return `${b.toFixed(b < 10 && i ? 1 : 0)} ${u[i]}`; };
+const rate = (b) => (b == null ? '—' : bytes(b) + '/s');
+const tC = (c) => (c == null ? '—' : o.fahrenheit ? `${Math.round(c * 9 / 5 + 32)}°F` : `${Math.round(c)}°C`);
+const pct = (v) => (v == null ? '—' : `${Math.round(v)}%`);
+const push = (a, v) => { a.push(v ?? null); while (a.length > 90) a.shift(); };
+const css = (name) => getComputedStyle(document.body).getPropertyValue(name).trim();
+function level(node, v, warnAt, badAt) { node.classList.toggle('warn', v != null && v >= warnAt && v < badAt); node.classList.toggle('bad', v != null && v >= badAt); }
 
 function log(msg, kind = '') {
   const t = new Date().toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
   logLines.push({ t, msg, kind });
-  while (logLines.length > 40) logLines.shift();
-  if (!o.showLog) return;
-  $('log').replaceChildren(...logLines.slice(-18).map((l) => {
-    const p = document.createElement('p');
-    const ts = document.createElement('span'); ts.className = 't'; ts.textContent = `[${l.t}] `;
-    const m = document.createElement('span'); m.textContent = l.msg; if (l.kind) m.className = l.kind;
-    p.append(ts, m); return p;
+  while (logLines.length > 30) logLines.shift();
+  $('log').replaceChildren(...logLines.slice(-3).map((l) => {
+    const p = el('p'); p.append(el('span', 't', `[${l.t}] `), el('span', l.kind, l.msg)); return p;
   }));
 }
 function alertOnce(key, on, msg) {
   if (on && !alerts[key]) log(msg, 'bad');
-  if (!on && alerts[key]) log(`${key.toUpperCase()} back to normal`, '');
+  if (!on && alerts[key]) log(`${key.toUpperCase()} BACK TO NORMAL`);
   alerts[key] = on;
 }
 
-function graph(id, series, max, color2) {
-  const c = $(id); if (!c || !c.offsetWidth) return;
-  const w = c.width = c.offsetWidth * devicePixelRatio, h = c.height = c.offsetHeight * devicePixelRatio;
-  const g = c.getContext('2d');
-  const css = getComputedStyle(document.body);
-  g.strokeStyle = css.getPropertyValue('--line'); g.lineWidth = 1;
+// Ring gauge: value 0..max, colored by thresholds.
+function gauge(label, value, text, max, warnAt, badAt, need) {
+  const box = el('div', 'gauge');
+  const v = value == null ? 0 : Math.max(0, Math.min(1, value / max));
+  const color = value == null ? css('--dim') : value >= badAt ? css('--bad') : value >= warnAt ? css('--warn') : css('--hi');
+  const r = 40, c = Math.PI * r; // half-ish arc (240°)
+  const arc = (2 * Math.PI * r) * (240 / 360);
+  box.innerHTML = `<svg viewBox="0 0 100 70"><g transform="rotate(150 50 50)">
+    <circle cx="50" cy="50" r="${r}" fill="none" stroke="${css('--line')}" stroke-width="6" stroke-dasharray="${arc} 999" stroke-linecap="round"/>
+    <circle cx="50" cy="50" r="${r}" fill="none" stroke="${color}" stroke-width="6" stroke-dasharray="${arc * v} 999" stroke-linecap="round"
+      style="filter: drop-shadow(0 0 ${3 * (o.glow ?? 0.5)}px ${color})"/></g></svg>`;
+  const val = el('div', 'val', text); val.style.color = color;
+  box.append(val, el('div', 'lab', label));
+  if (need && value == null) box.append(el('div', 'need', need));
+  void c;
+  return box;
+}
+
+// Dual line graph: load (solid) + temperature (dashed), both 0..100.
+function graph(canvas, a, b, maxA = 100, maxB = 100) {
+  if (!canvas || !canvas.offsetWidth) return;
+  const w = canvas.width = canvas.offsetWidth * devicePixelRatio, h = canvas.height = canvas.offsetHeight * devicePixelRatio;
+  const g = canvas.getContext('2d');
+  g.strokeStyle = css('--line'); g.lineWidth = 1;
   for (let i = 1; i < 4; i++) { g.beginPath(); g.moveTo(0, (h / 4) * i); g.lineTo(w, (h / 4) * i); g.stroke(); }
-  series.forEach((arr, k) => {
-    if (arr.length < 2) return;
-    const m = max || Math.max(1, ...series.flat());
-    g.beginPath();
-    arr.forEach((v, i) => { const x = (i / 59) * w, y = h - (v / m) * (h - 2) - 1; i ? g.lineTo(x, y) : g.moveTo(x, y); });
-    g.strokeStyle = css.getPropertyValue(k ? (color2 || '--hi2') : '--hi'); g.lineWidth = 1.6 * devicePixelRatio; g.stroke();
-  });
+  const line = (arr, max, color, dash, fill) => {
+    const pts = arr.map((v, i) => [(i / 89) * w, v == null ? null : h - Math.min(1, v / max) * (h - 3) - 1.5]).filter((p) => p[1] != null);
+    if (pts.length < 2) return;
+    g.setLineDash(dash ? [4 * devicePixelRatio, 3 * devicePixelRatio] : []);
+    g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
+    g.strokeStyle = color; g.lineWidth = 1.6 * devicePixelRatio; g.stroke();
+    if (fill) {
+      g.lineTo(pts[pts.length - 1][0], h); g.lineTo(pts[0][0], h); g.closePath();
+      const grad = g.createLinearGradient(0, 0, 0, h); grad.addColorStop(0, color + '55'); grad.addColorStop(1, color + '00');
+      g.fillStyle = grad; g.setLineDash([]); g.fill();
+    }
+  };
+  line(a, maxA, css('--hi'), false, true);
+  if (b) line(b, maxB, css('--hi3'), true, false);
 }
-function push(arr, v) { arr.push(v ?? 0); while (arr.length > 60) arr.shift(); }
 
-function render() {
+function card(id, model, gauges, a, b, details, extra) {
+  const c = $(id);
+  const canvas = el('canvas', 'graph');
+  const legend = el('div', 'legend');
+  legend.innerHTML = `<span><i style="background:var(--hi)"></i>LOAD</span>${b ? '<span><i style="background:var(--hi3)"></i>TEMP</span>' : ''}`;
+  const dl = el('dl', 'details');
+  for (const [k, v, cls] of details) { dl.append(el('dt', 'k', k), el('dd', cls || '', v)); }
+  c.replaceChildren(el('div', 'model', model), el('div', 'gauges'), canvas, legend, dl, ...(extra || []));
+  c.querySelector('.gauges').append(...gauges);
+  graph(canvas, a, b);
+}
+
+// ---------------------------------------------------------------- weather icons
+function wxIcon(cond, isDay = true) {
+  const sun = '<circle cx="24" cy="24" r="7"/><path d="M24 9v4M24 35v4M9 24h4M35 24h4M13.4 13.4l2.8 2.8M31.8 31.8l2.8 2.8M13.4 34.6l2.8-2.8M31.8 16.2l2.8-2.8"/>';
+  const moon = '<path d="M30 12a12 12 0 1 0 6 21 10 10 0 0 1-6-21z"/>';
+  const cloud = '<path d="M15 36h19a7 7 0 0 0 0-14 10 10 0 0 0-19-2 8 8 0 0 0 0 16z"/>';
+  const map = {
+    clear: isDay ? sun : moon,
+    cloudy: `<g transform="translate(-6 -6) scale(.7)">${isDay ? sun : moon}</g>${cloud}`,
+    fog: '<path d="M8 18h32M6 25h36M10 32h28M14 39h20"/>',
+    rain: `${cloud}<path d="M17 40l-2 5M24 40l-2 5M31 40l-2 5"/>`.replace('36h19', '32h19').replace('a7 7 0 0 0 0-14', 'a7 7 0 0 0 0-14'),
+    snow: `${cloud}<path d="M17 42h.01M24 44h.01M31 42h.01"/>`,
+    storm: `${cloud}<path d="M25 37l-4 6h5l-3 6"/>`,
+  };
+  const body = map[cond] || cloud;
+  return `<svg class="wx" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
+}
+function uvInfo(uv) {
+  if (uv == null) return ['—', '#666'];
+  if (uv < 3) return ['LOW', '#34d399']; if (uv < 6) return ['MODERATE', '#facc15']; if (uv < 8) return ['HIGH', '#fb923c'];
+  if (uv < 11) return ['VERY HIGH', '#f87171']; return ['EXTREME', '#c084fc'];
+}
+function aqiInfo(a) {
+  if (a == null) return ['—', '#666'];
+  if (a <= 20) return ['GOOD', '#34d399']; if (a <= 40) return ['FAIR', '#a3e635']; if (a <= 60) return ['MODERATE', '#facc15'];
+  if (a <= 80) return ['POOR', '#fb923c']; if (a <= 100) return ['VERY POOR', '#f87171']; return ['EXTREMELY POOR', '#c084fc'];
+}
+function moonPhase(date) {
+  const syn = 29.530588853, ref = Date.UTC(2000, 0, 6, 18, 14) / 86400000;
+  const age = (((date.getTime() / 86400000 - ref) % syn) + syn) % syn;
+  const names = ['NEW MOON', 'WAXING CRESCENT', 'FIRST QUARTER', 'WAXING GIBBOUS', 'FULL MOON', 'WANING GIBBOUS', 'LAST QUARTER', 'WANING CRESCENT'];
+  const idx = Math.floor((age / syn) * 8 + 0.5) % 8;
+  const illum = Math.round((1 - Math.cos((2 * Math.PI * age) / syn)) / 2 * 100);
+  return { name: names[idx], illum, age };
+}
+function moonSvg(age) {
+  const syn = 29.530588853, p = age / syn;
+  const k = Math.cos(p * 2 * Math.PI); // 1 new, -1 full
+  const rx = Math.abs(k) * 10;
+  const waxing = p < 0.5;
+  const lit = `M12 2 A10 10 0 0 ${waxing ? 1 : 0} 12 22 A${rx} 10 0 0 ${(k > 0) === waxing ? 0 : 1} 12 2`;
+  return `<svg class="moon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="${css('--line')}"/><path d="${lit}" fill="${css('--fg')}"/></svg>`;
+}
+const wt = (v) => (v == null ? '—' : `${Math.round(v)}°`);
+const hhmm = (iso) => (iso ? new Date(iso).toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit', hour12: !o.format24 }) : '—');
+
+// ---------------------------------------------------------------- render: hardware
+function renderHardware() {
   if (!s) return;
+  const g = s.gpu || {};
   $('hostLine').textContent = `${s.host || 'HOST'} · ${s.os || ''}`;
-  $('opLine').textContent = `OPERATOR ${String(o.operator || 'OPERATOR').toUpperCase()} · ${s.processCount} PROCESSES`;
-  $('cpuName').textContent = s.cpuName || 'CPU';
-  $('cpuPct').textContent = pct(s.cpu); level($('cpuPct'), s.cpu, o.loadMax - 10, o.loadMax);
-  $('cpuTemp').textContent = temp(s.cpuTemp); level($('cpuTemp'), s.cpuTemp, o.cpuTempMax - 8, o.cpuTempMax);
-  setBar('cpuBar', s.cpu, 30);
-  $('cpuFreq').textContent = s.cpuFreq ? `${(s.cpuFreq / 1000).toFixed(2)} GHz` : '—';
-  $('cpuPower').textContent = s.cpuPower != null ? `${Math.round(s.cpuPower)} W` : '—';
-  $('procCount').textContent = s.processCount ?? '—';
-  $('cores').replaceChildren(...(s.cores || []).map((c, i) => {
-    const d = document.createElement('div');
-    d.textContent = `C${String(i).padStart(2, '0')} ${String(Math.round(c)).padStart(3)}%`;
-    level(d, c, o.loadMax - 10, o.loadMax); return d;
-  }));
-  $('memText').textContent = `${bytes(s.memoryUsed)} / ${bytes(s.memoryTotal)} (${pct(s.memory)})`;
-  setBar('memBar', s.memory, 30);
-  $('swapText').textContent = s.swapTotal ? `${bytes(s.swapUsed)} / ${bytes(s.swapTotal)}` : '—';
   const up = s.uptime || 0;
-  $('uptime').textContent = `${Math.floor(up / 86400)}d ${String(Math.floor(up % 86400 / 3600)).padStart(2, '0')}:${String(Math.floor(up % 3600 / 60)).padStart(2, '0')}`;
+  $('opLine').textContent = `OPERATOR ${String(o.operator || 'OPERATOR').toUpperCase()} · UPTIME ${Math.floor(up / 86400)}d ${String(Math.floor(up % 86400 / 3600)).padStart(2, '0')}h ${String(Math.floor(up % 3600 / 60)).padStart(2, '0')}m · ${s.processCount} PROCS`;
 
-  const g = s.gpu;
-  $('gpuName').textContent = g?.name || 'GPU data unavailable on this system';
-  $('gpuPct').textContent = pct(g?.usage); level($('gpuPct'), g?.usage, o.loadMax - 10, o.loadMax);
-  $('gpuTemp').textContent = temp(g?.temp); level($('gpuTemp'), g?.temp, o.gpuTempMax - 8, o.gpuTempMax);
-  setBar('gpuBar', g?.usage, 30);
-  const vr = g?.vramTotal ? (g.vramUsed || 0) / g.vramTotal * 100 : null;
-  $('vramText').textContent = g?.vramTotal ? `${bytes(g.vramUsed)} / ${bytes(g.vramTotal)}` : '—';
-  setBar('vramBar', vr, 30);
-  $('gpuFan').textContent = g?.fan ? `${g.fan} RPM` : '—';
-  $('gpuPower').textContent = g?.power != null ? `${Math.round(g.power)} W` : '—';
+  const hw = ' HWiNFO';
+  // CPU
+  const cores = el('div', 'cores');
+  for (const c of s.cores || []) { const i = el('i'); i.style.opacity = 0.15 + Math.min(1, c / 100) * 0.85; if (c >= o.loadMax) i.style.background = css('--bad'); cores.append(i); }
+  cores.style.gridTemplateColumns = `repeat(${Math.min(32, Math.max(8, (s.cores || []).length))}, 1fr)`;
+  card('cpuCard', s.cpuName || 'CPU', [
+    gauge('LOAD', s.cpu, pct(s.cpu), 100, o.loadMax - 15, o.loadMax),
+    gauge('TEMP', s.cpuTemp, tC(s.cpuTemp), 100, o.cpuTempMax - 10, o.cpuTempMax, 'needs' + hw),
+  ], H.cpu, H.cpuT, [
+    ['FREQUENCY', s.cpuFreq ? `${(s.cpuFreq / 1000).toFixed(2)} GHz` : '—'],
+    ['POWER', s.cpuPower != null ? `${Math.round(s.cpuPower)} W` : '—'],
+    ['THREADS', String((s.cores || []).length)],
+  ], [cores]);
 
-  const procs = s.processes || [];
+  // GPU
+  const vram = g.vramTotal ? (g.vramUsed || 0) / g.vramTotal * 100 : null;
+  const vbar = el('div', 'bar'); const vi = el('i'); vi.style.width = `${vram || 0}%`; vbar.append(vi);
+  card('gpuCard', g.name || 'GPU data unavailable', [
+    gauge('LOAD', g.usage, pct(g.usage), 100, o.loadMax - 15, o.loadMax),
+    gauge('TEMP', g.temp, tC(g.temp), 100, o.gpuTempMax - 10, o.gpuTempMax),
+  ], H.gpu, H.gpuT, [
+    ['VRAM', g.vramTotal ? `${bytes(g.vramUsed)} / ${bytes(g.vramTotal)}` : '—'],
+    ['FAN', g.fan ? `${g.fan} RPM` : '—'],
+    ['POWER', g.power != null ? `${Math.round(g.power)} W` : (g.hotspot != null ? `HOTSPOT ${tC(g.hotspot)}` : '—')],
+  ], [vbar]);
+
+  // RAM
+  const hog = (s.memoryHogs || [])[0];
+  const mbar = el('div', 'bar'); const mi = el('i'); mi.style.width = `${s.memory || 0}%`; mbar.append(mi);
+  card('ramCard', `${bytes(s.memoryTotal)} SYSTEM MEMORY`, [
+    gauge('USAGE', s.memory, pct(s.memory), 100, 80, 92),
+    gauge('TEMP', s.ramTemp, tC(s.ramTemp), 100, 60, 75, 'needs' + hw),
+  ], H.ram, H.ramT, [
+    ['IN USE', `${bytes(s.memoryUsed)}`],
+    ['AVAILABLE', bytes(s.memoryAvailable)],
+    ['SWAP', s.swapTotal ? `${bytes(s.swapUsed)} / ${bytes(s.swapTotal)}` : '—'],
+    ['TOP', hog ? `${hog.name} ${bytes(hog.memory)}` : '—'],
+  ], [mbar]);
+
+  // SSD: system drive first.
+  const drives = s.drives || [];
+  const sys = drives.find((d) => /C:/i.test(d.letters || '')) || drives[0] || {};
+  const vol = (s.disks || []).find((d) => /^C:/i.test(d.mount || '')) || (s.disks || [])[0];
+  const dbar = el('div', 'bar'); const di = el('i'); di.style.width = vol ? `${vol.used / vol.total * 100}%` : '0'; dbar.append(di);
+  const others = drives.filter((d) => d !== sys).slice(0, 2).map((d) => {
+    const r = el('div', 'row'); r.style.fontSize = '0.85em';
+    r.append(el('span', 'k', `${(d.letters || '').trim() || 'DISK ' + d.index} ${String(d.model || '').slice(0, 18)}`), el('span', null, `${pct(d.active)} · ${tC(d.temp)}`));
+    return r;
+  });
+  card('ssdCard', `${sys.model || 'STORAGE'}${sys.letters ? ' · ' + sys.letters : ''}`, [
+    gauge('ACTIVE', sys.active, pct(sys.active), 100, 70, 95),
+    gauge('TEMP', sys.temp, tC(sys.temp), 85, o.ssdTempMax - 10, o.ssdTempMax),
+  ], H.ssd, H.ssdT, [
+    ['READ', rate(sys.read)],
+    ['WRITE', rate(sys.write)],
+    [`${vol ? String(vol.mount).replace(/\\$/, '') : 'DISK'} USED`, vol ? `${bytes(vol.used)} / ${bytes(vol.total)}` : '—'],
+  ], [dbar, ...others]);
+
+  // Top 5 processes
+  const procs = (s.processes || []).slice(0, 5);
   const maxCpu = Math.max(1, ...procs.map((p) => p.cpu));
-  $('procs').replaceChildren(...procs.slice(0, 10).map((p) => {
-    const tr = document.createElement('tr');
-    const n = document.createElement('td'); n.textContent = p.name + (p.count > 1 ? ` ×${p.count}` : '');
-    const c = document.createElement('td'); c.textContent = `${p.cpu.toFixed(1)}%`; level(c, p.cpu, 40, 80);
-    const m = document.createElement('td'); m.textContent = bytes(p.memory);
-    const b = document.createElement('td'); b.style.paddingLeft = '0.8em'; b.append(bar((p.cpu / maxCpu) * 100, 10));
-    tr.append(n, c, m, b); return tr;
+  $('procs').replaceChildren(...procs.map((p, i) => {
+    const tr = el('tr');
+    const n = el('td', 'n'); n.append(el('span', 'rank', `${i + 1}`), p.name + (p.count > 1 ? ` ×${p.count}` : ''));
+    const pb = el('div', 'pb'); const pi = el('i'); pi.style.width = `${(p.cpu / maxCpu) * 100}%`; pb.append(pi); n.append(pb);
+    const c = el('td', 'r', `${p.cpu.toFixed(1)}%`); level(c, p.cpu, 40, 80);
+    tr.append(n, c, el('td', 'r k', bytes(p.memory)));
+    return tr;
   }));
 
-  $('disks').replaceChildren(...(s.disks || []).filter((d) => !d.removable || d.total > 0).slice(0, 4).map((d) => {
-    const div = document.createElement('div');
-    const r = document.createElement('div'); r.className = 'row';
-    const a = document.createElement('span'); a.className = 'k'; a.textContent = (d.mount || d.name).replace(/\\$/, '');
-    const b = document.createElement('span'); b.textContent = `${bytes(d.used)} / ${bytes(d.total)}`;
-    r.append(a, b);
-    const bb = document.createElement('div'); bb.className = 'bar'; bb.append(bar(d.used / d.total * 100, 30));
-    div.append(r, bb); return div;
-  }));
+  // Network + fans
   $('rx').textContent = rate(s.net?.rx); $('tx').textContent = rate(s.net?.tx);
+  const peak = Math.max(...H.rx.filter(Boolean), 0);
+  $('netPeak').textContent = peak ? `PEAK ${rate(peak)}` : '';
+  graph($('netGraph'), H.rx, H.tx, Math.max(1, ...H.rx.filter(Boolean), ...H.tx.filter(Boolean)), Math.max(1, ...H.rx.filter(Boolean), ...H.tx.filter(Boolean)));
+  const fans = s.fans || [];
+  $('fans').replaceChildren(...(fans.length ? fans.slice(0, 4).flatMap((f) => [el('dt', 'k', String(f.label).toUpperCase().slice(0, 18)), el('dd', null, `${f.rpm} RPM`)])
+    : [el('dt', 'k', 'FANS'), el('dd', 'k', g.fan ? `GPU ${g.fan} RPM` : 'via HWiNFO')]));
 
-  const srcs = s.sources?.temperatures;
-  $('sources').textContent = srcs === 'hwinfo' ? 'SENSORS: HWiNFO SHARED MEMORY' : srcs === 'gpu-driver' ? 'SENSORS: GPU DRIVER · CPU TEMP NEEDS HWiNFO' : srcs === 'system' ? 'SENSORS: SYSTEM' : 'SENSORS: LOAD ONLY';
+  for (const c of ['cpuCard', 'gpuCard', 'ramCard', 'ssdCard']) $(c).querySelectorAll('canvas').forEach(() => {});
 
-  push(hist.cpu, s.cpu); push(hist.gpu, g?.usage); push(hist.rx, s.net?.rx); push(hist.tx, s.net?.tx);
-  graph('cpuGraph', [hist.cpu], 100); graph('gpuGraph', [hist.gpu], 100); graph('netGraph', [hist.rx, hist.tx], 0);
-
-  alertOnce('cpu temp', s.cpuTemp != null && s.cpuTemp >= o.cpuTempMax, `ALERT CPU TEMPERATURE ${temp(s.cpuTemp)}`);
-  alertOnce('gpu temp', g?.temp != null && g.temp >= o.gpuTempMax, `ALERT GPU TEMPERATURE ${temp(g.temp)}`);
-  alertOnce('cpu load', s.cpu >= o.loadMax, `CPU LOAD SPIKE ${pct(s.cpu)} — TOP: ${procs[0]?.name || '?'}`);
-  alertOnce('memory', s.memory >= 90, `MEMORY PRESSURE ${pct(s.memory)}`);
+  alertOnce('cpu temp', s.cpuTemp != null && s.cpuTemp >= o.cpuTempMax, `ALERT CPU ${tC(s.cpuTemp)}`);
+  alertOnce('gpu temp', g.temp != null && g.temp >= o.gpuTempMax, `ALERT GPU ${tC(g.temp)}`);
+  alertOnce('ssd temp', sys.temp != null && sys.temp >= o.ssdTempMax, `ALERT SSD ${tC(sys.temp)}`);
+  alertOnce('cpu load', s.cpu >= o.loadMax, `CPU LOAD ${pct(s.cpu)} — TOP: ${procs[0]?.name || '?'}`);
+  alertOnce('memory', s.memory >= 92, `MEMORY PRESSURE ${pct(s.memory)}`);
 }
 
+// ---------------------------------------------------------------- render: weather
+function renderWeather() {
+  if (!w || !o.showWeather) return;
+  const [uvT, uvC] = uvInfo(w.uv);
+  const [aqT, aqC] = aqiInfo(w.air?.aqi);
+  const now = $('now');
+  now.innerHTML = wxIcon(w.condition, w.isDay);
+  const mid = el('div');
+  const t = el('div', 'temp', `${Math.round(w.temperature)}${w.units || '°'}`);
+  mid.append(t, el('div', 'cond', `${String(w.description || '').toUpperCase()} · ${String(w.location || '').split(',')[0].toUpperCase()}`),
+    el('div', 'k', `FEELS ${wt(w.feelsLike)} · H ${wt(w.high)} L ${wt(w.low)}`));
+  const facts = el('div', 'facts');
+  const badge = (txt, col) => { const b = el('span', 'badge', txt); b.style.background = col; return b; };
+  const uvd = el('span'); uvd.append(badge(`UV ${w.uv != null ? Math.round(w.uv) : '—'}`, uvC), ' ', uvT);
+  const aqd = el('span'); aqd.append(badge(`AQI ${w.air?.aqi != null ? Math.round(w.air.aqi) : '—'}`, aqC), ' ', aqT);
+  facts.append(uvd, aqd,
+    el('span', null, `HUM ${pct(w.humidity)}`), el('span', null, `WIND ${w.wind != null ? Math.round(w.wind) : '—'} ${w.windUnits || ''}`),
+    el('span', null, `RAIN ${pct(w.rainChance)}`), el('span', null, `${w.pressure != null ? Math.round(w.pressure) : '—'} hPa`),
+    el('span', 'k', `PM2.5 ${w.air?.pm25 != null ? Math.round(w.air.pm25) : '—'}`), el('span', 'k', `UV MAX ${w.uvMax != null ? Math.round(w.uvMax) : '—'}`));
+  now.append(mid, facts);
+
+  // 4 days
+  const days = w.days || [];
+  $('days').replaceChildren(...days.slice(0, 4).map((d, i) => {
+    const box = el('div', 'day' + (i === 0 ? ' today' : ''));
+    const name = i === 0 ? 'TODAY' : new Date(d.date + 'T12:00').toLocaleDateString(lang, { weekday: 'short' }).toUpperCase();
+    box.append(el('div', 'dn', name));
+    box.insertAdjacentHTML('beforeend', wxIcon(d.condition, true));
+    const mm = el('div', 'mm'); mm.append(`${wt(d.max)} `, el('span', null, wt(d.min))); box.append(mm);
+    const [dUv, dUvC] = uvInfo(d.uvMax);
+    const sub = el('div', 'sub'); sub.append(`RAIN ${pct(d.rainChance)} · `);
+    const b = el('span', 'badge', `UV ${d.uvMax != null ? Math.round(d.uvMax) : '—'}`); b.style.background = dUvC; b.style.fontSize = '0.85em'; b.title = dUv;
+    sub.append(b); box.append(sub);
+    box.append(el('div', 'sub', String(d.description || '').toUpperCase()));
+    return box;
+  }));
+
+  // 24h chart
+  const hours = w.hours || [];
+  const temps = hours.map((h) => h.temp);
+  const rains = hours.map((h) => h.rainChance);
+  const lo = Math.min(...temps), hi = Math.max(...temps);
+  const c = $('hourGraph');
+  if (c.offsetWidth && temps.length > 1) {
+    const W = c.width = c.offsetWidth * devicePixelRatio, Hh = c.height = c.offsetHeight * devicePixelRatio;
+    const g = c.getContext('2d');
+    rains.forEach((r, i) => { if (!r) return; g.fillStyle = css('--hi2') + '55'; const bw = W / rains.length; g.fillRect(i * bw + 1, Hh - (r / 100) * Hh, bw - 2, (r / 100) * Hh); });
+    g.beginPath();
+    temps.forEach((v, i) => { const x = (i / (temps.length - 1)) * W, y = Hh - ((v - lo) / Math.max(1, hi - lo)) * (Hh - 14 * devicePixelRatio) - 7 * devicePixelRatio; i ? g.lineTo(x, y) : g.moveTo(x, y); });
+    g.strokeStyle = css('--hi'); g.lineWidth = 2 * devicePixelRatio; g.stroke();
+    g.fillStyle = css('--dim'); g.font = `${10 * devicePixelRatio}px monospace`;
+    [0, 6, 12, 18].forEach((i) => { if (!hours[i]) return; g.fillText(hhmm(hours[i].time), (i / (temps.length - 1)) * W + 3, 11 * devicePixelRatio); });
+  }
+  $('hourRange').textContent = temps.length ? `${wt(lo)} → ${wt(hi)}` : '';
+
+  // Sun & moon
+  const today = days[0] || {};
+  const sr = today.sunrise ? new Date(today.sunrise) : null, ss = today.sunset ? new Date(today.sunset) : null;
+  const nowD = new Date();
+  let daylight = '—';
+  if (sr && ss) {
+    const left = (ss - nowD) / 60000;
+    daylight = nowD < sr ? 'BEFORE SUNRISE' : left > 0 ? `${Math.floor(left / 60)}h ${Math.round(left % 60)}m OF LIGHT LEFT` : 'AFTER SUNSET';
+  }
+  const m = moonPhase(nowD);
+  $('sun').innerHTML = '';
+  const add = (k, v) => { const sp = el('span'); sp.append(el('span', 'k', k + ' '), el('b', null, v)); $('sun').append(sp); };
+  add('SUNRISE', hhmm(today.sunrise)); add('SUNSET', hhmm(today.sunset)); add('', daylight);
+  const ms = el('span'); ms.innerHTML = moonSvg(m.age); ms.append(` ${m.name} ${m.illum}%`); $('sun').append(ms);
+}
+
+// ---------------------------------------------------------------- clock
+function weekNumber(d) {
+  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const day = t.getUTCDay() || 7; t.setUTCDate(t.getUTCDate() + 4 - day);
+  return Math.ceil(((t - new Date(Date.UTC(t.getUTCFullYear(), 0, 1))) / 86400000 + 1) / 7);
+}
+function tickClock() {
+  const d = new Date();
+  const hh = d.getHours(), h12 = ((hh + 11) % 12) + 1;
+  const h = o.format24 === false ? String(h12) : String(hh).padStart(2, '0');
+  $('time').innerHTML = '';
+  $('time').append(`${h}:${String(d.getMinutes()).padStart(2, '0')}`, el('small', null, `:${String(d.getSeconds()).padStart(2, '0')}${o.format24 === false ? (hh < 12 ? ' AM' : ' PM') : ''}`));
+  $('date').textContent = d.toLocaleDateString(lang, { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }).toUpperCase();
+  const dayP = ((d.getHours() * 60 + d.getMinutes()) / 1440) * 100;
+  const start = new Date(d.getFullYear(), 0, 1), end = new Date(d.getFullYear() + 1, 0, 1);
+  const yearP = ((d - start) / (end - start)) * 100;
+  $('progress').innerHTML = '';
+  for (const [k, v] of [['WEEK', String(weekNumber(d))], ['DAY', `${dayP.toFixed(0)}%`], ['YEAR', `${yearP.toFixed(1)}%`]]) {
+    const sp = el('span'); sp.append(`${k} `, el('b', null, v)); $('progress').append(sp);
+  }
+}
+
+// ---------------------------------------------------------------- look & boot
 function applyLook() {
   document.body.className = [o.theme || 'wallgates', o.aberration ? 'aberration' : '', o.flicker ? 'flicker' : '', Wallgates.paused ? 'paused' : ''].join(' ');
   const st = document.documentElement.style;
   st.setProperty('--fs', o.fontSize ?? 1); st.setProperty('--glow', o.glow ?? 0.55); st.setProperty('--scan', o.scanlines ?? 0.35);
-  st.setProperty('--noise', o.noise ?? 0.08); st.setProperty('--vig', o.vignette ?? 0.55);
-  $('gpuPanel').classList.toggle('hidden', !o.showGpu);
+  st.setProperty('--noise', o.noise ?? 0.05); st.setProperty('--vig', o.vignette ?? 0.55);
   $('procPanel').classList.toggle('hidden', !o.showProcs);
-  $('ioPanel').classList.toggle('hidden', !o.showDisks && !o.showNet);
-  $('disks').classList.toggle('hidden', !o.showDisks);
-  $('netBox').classList.toggle('hidden', !o.showNet);
-  $('logPanel').classList.toggle('hidden', !o.showLog);
+  $('netPanel').classList.toggle('hidden', !o.showNet);
+  $('forecast').classList.toggle('hidden', !o.showWeather);
+  $('now').classList.toggle('hidden', !o.showWeather);
+  $('media').classList.toggle('hidden', !o.showMedia);
   $('meter').classList.toggle('hidden', !o.showAudio);
+  $('log').classList.toggle('hidden', !o.showLog);
   $('miniLogo').classList.toggle('hidden', !o.showLogo);
-  render();
+  tickClock(); renderHardware(); renderWeather();
 }
 
-function tickClock() {
-  const now = new Date();
-  $('time').textContent = now.toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit', hour12: false });
-  $('date').textContent = now.toLocaleDateString(lang, { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }).toUpperCase();
-}
-
-// Boot sequence: the Wallgates gate, then a few lines of "firmware".
 async function bootSequence() {
   const box = $('boot');
   if (!o.boot) { box.remove(); booted = true; return; }
-  const pre = document.createElement('pre'); pre.textContent = LOGO; pre.style.fontSize = '1.9em';
-  const text = document.createElement('div'); text.style.marginTop = '2vw';
+  const pre = el('pre'); pre.textContent = LOGO; pre.style.fontSize = '1.9em';
+  const text = el('div'); text.style.marginTop = '2vw';
   box.append(pre, text);
   const steps = ['WALLGATES OS · LIVE WALLPAPER KERNEL', 'OPENING GATE ................. OK', 'ATTACHING TO DESKTOP ......... OK',
-    'PROBING CPU / GPU / SENSORS .. OK', 'MOUNTING FILESYSTEMS ......... OK', 'LINK ESTABLISHED. WELCOME, ' + String(o.operator || 'OPERATOR').toUpperCase() + '.'];
-  for (const line of steps) { text.textContent += line + '\n'; await new Promise((r) => setTimeout(r, 380)); }
+    'PROBING CPU / GPU / RAM / SSD . OK', 'LINKING WEATHER SATELLITES ... OK', 'LINK ESTABLISHED. WELCOME, ' + String(o.operator || 'OPERATOR').toUpperCase() + '.'];
+  for (const line of steps) { text.textContent += line + '\n'; await new Promise((r) => setTimeout(r, 360)); }
   await new Promise((r) => setTimeout(r, 600));
   box.style.transition = 'opacity .6s'; box.style.opacity = '0';
-  setTimeout(() => box.remove(), 650);
+  setTimeout(() => { box.remove(); renderHardware(); renderWeather(); }, 650);
   booted = true;
 }
 
-// Film-grain noise, cheap: a tiny canvas scaled up, redrawn ~12 fps.
 const nc = $('noise'), nx = nc.getContext('2d');
 nc.width = 160; nc.height = 90;
 function noise() {
-  if (!Wallgates.paused && (o.noise ?? 0.08) > 0) {
+  if (!Wallgates.paused && (o.noise ?? 0.05) > 0) {
     const img = nx.createImageData(160, 90);
     for (let i = 0; i < img.data.length; i += 4) { const v = Math.random() * 255; img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
     nx.putImageData(img, 0, 0);
@@ -323,6 +550,7 @@ function noise() {
   setTimeout(noise, 85);
 }
 
+// ---------------------------------------------------------------- data
 let started = false;
 Wallgates.on('properties', (v) => {
   o = v; applyLook();
@@ -331,20 +559,32 @@ Wallgates.on('properties', (v) => {
 Wallgates.on('pause', () => applyLook());
 Wallgates.on('system', (d) => {
   const first = !s; s = d;
+  const sys = (d.drives || []).find((x) => /C:/i.test(x.letters || '')) || (d.drives || [])[0] || {};
+  push(H.cpu, d.cpu); push(H.cpuT, d.cpuTemp); push(H.gpu, d.gpu?.usage); push(H.gpuT, d.gpu?.temp);
+  push(H.ram, d.memory); push(H.ramT, d.ramTemp); push(H.ssd, sys.active); push(H.ssdT, sys.temp);
+  push(H.rx, d.net?.rx); push(H.tx, d.net?.tx);
   if (first) {
-    log(`HOST ${d.host || '?'} · ${d.cpuName || 'CPU'} · ${(d.cores || []).length} THREADS`);
-    if (d.gpu?.name) log(`GPU ${d.gpu.name} · ${bytes(d.gpu.vramTotal)} VRAM`);
-    log(d.sources?.temperatures === 'hwinfo' ? 'SENSORS: HWiNFO shared memory connected' : 'TIP: run HWiNFO with Shared Memory Support for CPU temperature', d.sources?.temperatures === 'hwinfo' ? '' : 'warn');
+    log(`HOST ${d.host || '?'} · ${(d.cores || []).length} THREADS · ${bytes(d.memoryTotal)} RAM`);
+    if (d.sources?.temperatures !== 'hwinfo') log('TIP: run HWiNFO with Shared Memory Support for CPU/RAM temperatures', 'warn');
+    else log('SENSORS: HWiNFO shared memory connected');
   }
-  render();
+  if (!Wallgates.paused) renderHardware();
+});
+Wallgates.on('weather', (d) => { const first = !w; w = d; if (first) log(`WEATHER LINK: ${String(d.location || '').toUpperCase()}`); renderWeather(); });
+Wallgates.on('media', (m) => {
+  $('track').textContent = m.title ? String(m.title).toUpperCase() : 'NOTHING PLAYING';
+  $('artist').textContent = m.title ? `${m.playing ? '▶' : '❚❚'} ${m.artist || ''}` : '♪ play something on Spotify, YouTube…';
+  $('art').style.backgroundImage = m.thumbnail ? `url("${m.thumbnail}")` : '';
 });
 Wallgates.on('audio', ({ bands }) => {
   if (!o.showAudio || Wallgates.paused) return;
   const m = $('meter');
-  if (m.children.length !== 32) m.replaceChildren(...Array.from({ length: 32 }, () => document.createElement('i')));
-  for (let i = 0; i < 32; i++) m.children[i].style.height = `${Math.max(2, (bands[i * 2] || 0) * 100)}%`;
+  if (m.children.length !== 48) m.replaceChildren(...Array.from({ length: 48 }, () => el('i')));
+  for (let i = 0; i < 48; i++) m.children[i].style.height = `${Math.max(3, (bands[Math.floor(i * 64 / 48)] || 0) * 100)}%`;
 });
-setInterval(tickClock, 1000); tickClock(); noise();
+setInterval(() => { if (!Wallgates.paused) tickClock(); }, 1000);
+setInterval(() => { if (!Wallgates.paused) renderWeather(); }, 60000);
+tickClock(); noise();
 </script>
 </body>
 </html>

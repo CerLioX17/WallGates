@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.4.0
+**System Terminal 2.0**: a complete redesign with much more data.
+- Four hardware cards (**CPU, GPU, RAM, SSD**), each with load and temperature gauges, a combined
+  load/temperature history graph and details (frequency, power, threads, VRAM, fan, available memory,
+  swap, top memory user, read/write speed, disk space).
+- **Task manager**: the 5 heaviest processes with load bars.
+- **Clock** with seconds, date, week number, day and year progress.
+- **Weather**: current conditions, feels-like, humidity, wind, pressure, rain chance, **UV index** with
+  colour scale, **air quality** (European AQI, PM2.5), **today + next 3 days** forecast, a 24-hour
+  temperature/rain chart, sunrise, sunset, daylight left and **moon phase**.
+- **Network** graph with peak, **fans** (via HWiNFO), **now playing**, audio spectrum and a live log
+  with temperature and load alerts.
+- Scales to 16:9, 16:10 and ultrawide 21:9.
+
+**Engine**
+- SSD model, **temperature** and activity on Windows without admin rights (storage query + disk counters).
+- **RAM temperature** (DDR5 / DIMM sensors) and fan speeds from HWiNFO shared memory.
+- Weather now includes UV index, 4-day forecast, 24-hour forecast and air quality (Open-Meteo).
+
 ## 0.3.0
 **Two new terminal wallpapers, fully customizable**
 - **Market Terminal**: your watchlist and portfolio on the desktop. Paste ISINs or tickers, choose the

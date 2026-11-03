@@ -8,6 +8,8 @@ pub mod system;
 pub mod weather;
 
 #[cfg(windows)]
+pub mod drives_windows;
+#[cfg(windows)]
 pub mod gpu_windows;
 
 #[cfg(windows)]

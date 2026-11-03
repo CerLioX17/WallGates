@@ -1,12 +1,12 @@
 {
   "name": "System Terminal",
   "author": "Wallgates",
-  "description": "Every nerd stat on a retro CRT terminal: CPU and GPU load and temperatures, per-core graphs, VRAM, RAM, disks, network, top processes and a live system log. Boots with the Wallgates gate.",
+  "description": "Every nerd stat on a retro CRT terminal: CPU, GPU, RAM and SSD with load, temperature and history; top 5 processes; network and fans; the time; weather with UV, air quality and a 3-day forecast; sunrise, sunset and moon; now playing. Boots with the Wallgates gate.",
   "type": "html",
   "entry": "index.html",
   "preview": "preview.jpg",
   "license": "CC-BY-4.0",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "tags": [
     "system",
     "monitor",
@@ -18,7 +18,9 @@
   ],
   "capabilities": [
     "system",
-    "audio"
+    "audio",
+    "weather",
+    "media"
   ],
   "properties": {
     "g1": {
@@ -66,8 +68,13 @@
       "type": "bool",
       "default": true
     },
+    "format24": {
+      "label": "24-hour clock",
+      "type": "bool",
+      "default": true
+    },
     "fahrenheit": {
-      "label": "Use \u00b0F",
+      "label": "Use °F",
       "type": "bool",
       "default": false
     },
@@ -75,18 +82,8 @@
       "label": "Panels",
       "type": "group"
     },
-    "showGpu": {
-      "label": "GPU",
-      "type": "bool",
-      "default": true
-    },
-    "showDisks": {
-      "label": "Disks",
-      "type": "bool",
-      "default": true
-    },
-    "showNet": {
-      "label": "Network",
+    "showWeather": {
+      "label": "Weather & forecast",
       "type": "bool",
       "default": true
     },
@@ -95,13 +92,23 @@
       "type": "bool",
       "default": true
     },
-    "showLog": {
-      "label": "System log",
+    "showNet": {
+      "label": "Network & fans",
+      "type": "bool",
+      "default": true
+    },
+    "showMedia": {
+      "label": "Now playing",
       "type": "bool",
       "default": true
     },
     "showAudio": {
-      "label": "Audio meter",
+      "label": "Audio spectrum",
+      "type": "bool",
+      "default": true
+    },
+    "showLog": {
+      "label": "System log",
       "type": "bool",
       "default": true
     },
@@ -110,12 +117,16 @@
       "type": "bool",
       "default": true
     },
+    "n0": {
+      "label": "Weather needs Wallgates → Settings → Weather & location: turn it on and pick your city.",
+      "type": "note"
+    },
     "g3": {
       "label": "Alerts",
       "type": "group"
     },
     "cpuTempMax": {
-      "label": "CPU temperature alert (\u00b0C)",
+      "label": "CPU temperature alert (°C)",
       "type": "slider",
       "min": 50,
       "max": 105,
@@ -123,12 +134,20 @@
       "default": 85
     },
     "gpuTempMax": {
-      "label": "GPU temperature alert (\u00b0C)",
+      "label": "GPU temperature alert (°C)",
       "type": "slider",
       "min": 50,
       "max": 105,
       "step": 1,
       "default": 83
+    },
+    "ssdTempMax": {
+      "label": "SSD temperature alert (°C)",
+      "type": "slider",
+      "min": 40,
+      "max": 90,
+      "step": 1,
+      "default": 65
     },
     "loadMax": {
       "label": "Load alert (%)",
@@ -139,7 +158,7 @@
       "default": 92
     },
     "n1": {
-      "label": "CPU temperature on Windows needs HWiNFO (free) running with \u201cShared Memory Support\u201d. GPU temperature works out of the box on recent drivers.",
+      "label": "CPU and RAM temperatures on Windows need HWiNFO (free) running with “Shared Memory Support”. GPU and SSD temperatures work out of the box.",
       "type": "note"
     },
     "g4": {
