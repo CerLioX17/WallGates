@@ -273,7 +273,7 @@ pub struct Markets {
     cache_file: PathBuf,
     symbols: HashMap<String, String>,
     /// symbol → (fetched at, daily [unix time, close] pairs). Daily data changes slowly: refreshed every 3 h.
-    history: HashMap<String, (std::time::Instant, Value)>,
+    history: HashMap<String, (std::time::Instant, Value, Value)>,
 }
 
 /// First JSON object (depth-first) that has a numeric `last` field: onvista's quote block.
@@ -330,7 +330,10 @@ pub fn parse_onvista_venue(id: &str, snap: &Value, venue: &str) -> Option<Value>
             m.get("codeExchange").and_then(Value::as_str).unwrap_or("")).to_lowercase()).unwrap_or_default()
     };
     let names = venue_names(venue);
+    let fresh = |q: &&Map<String, Value>| q.get("datetimeLast").and_then(Value::as_str).unwrap_or("").to_string();
     let q = list.iter().copied().find(|q| { let n = market_name(q); names.iter().any(|x| n.contains(x)) })
+        // Requested venue missing: take the most recently traded one (a stale regional quote gives wrong daily moves).
+        .or_else(|| if names.is_empty() { None } else { list.iter().copied().max_by_key(fresh) })
         .or_else(|| find_quote(snap))?;
     parse_onvista_quote(id, snap, q)
 }
@@ -471,19 +474,21 @@ impl Markets {
         Ok((kind.to_string(), value.to_string()))
     }
 
-    fn daily(&mut self, agent: &ureq::Agent, symbol: &str) -> Value {
-        if let Some((at, v)) = self.history.get(symbol) {
+    /// Daily closes and their currency (the history listing can differ from the live venue: e.g. GBp in London).
+    fn daily(&mut self, agent: &ureq::Agent, symbol: &str) -> (Value, Value) {
+        if let Some((at, v, c)) = self.history.get(symbol) {
             if at.elapsed() < Duration::from_secs(3 * 3600) {
-                return v.clone();
+                return (v.clone(), c.clone());
             }
         }
         match Self::chart_range(agent, symbol, "2y", "1d") {
             Ok(c) => {
                 let v = parse_history(&c);
-                self.history.insert(symbol.to_string(), (std::time::Instant::now(), v.clone()));
-                v
+                let ccy = c.pointer("/chart/result/0/meta/currency").cloned().unwrap_or(Value::Null);
+                self.history.insert(symbol.to_string(), (std::time::Instant::now(), v.clone(), ccy.clone()));
+                (v, ccy)
             }
-            Err(_) => self.history.get(symbol).map(|(_, v)| v.clone()).unwrap_or_else(|| json!([])),
+            Err(_) => self.history.get(symbol).map(|(_, v, c)| (v.clone(), c.clone())).unwrap_or((json!([]), Value::Null)),
         }
     }
 
@@ -495,6 +500,7 @@ impl Markets {
         let mut currencies = BTreeSet::new();
         let mut bases = BTreeSet::new();
         let mut done = BTreeSet::new();
+        let mut currencies_seen: Vec<String> = Vec::new();
         for req in requests {
             bases.insert(req.currency.clone());
             for id in &req.ids {
@@ -523,7 +529,12 @@ impl Markets {
                     // Daily history always comes from the Yahoo listing (weeks/months/years: venue differences are tiny).
                     if req.history {
                         if let Ok(sym) = &yahoo_symbol {
-                            q["history"] = self.daily(&agent, sym);
+                            let (h, ccy) = self.daily(&agent, sym);
+                            if let Some(c) = ccy.as_str() {
+                                currencies_seen.push(if c == "GBp" { "GBP".to_string() } else { c.to_string() });
+                            }
+                            q["history"] = h;
+                            q["historyCurrency"] = ccy;
                             q["historySymbol"] = json!(sym);
                         }
                     }
@@ -540,6 +551,7 @@ impl Markets {
                 }
             }
         }
+        currencies.extend(currencies_seen);
         // FX rates to each requested base currency (for portfolio totals).
         let mut fx = Map::new();
         let mut fx_prev = Map::new();
@@ -630,6 +642,10 @@ mod tests {
         assert_eq!(q["exchange"], json!("Lang & Schwarz"));
         assert_eq!(parse_onvista_venue("X", &snap, "tradegate").unwrap()["price"], json!(210.1));
         assert_eq!(parse_onvista_venue("X", &snap, "").unwrap()["price"], json!(210.0));
+        let no_ls = json!({ "quoteList": { "list": [
+            { "last": 100.0, "previousLast": 99.0, "datetimeLast": "2026-11-03T09:01:00.000+01:00", "market": { "name": "Stuttgart" } },
+            { "last": 102.0, "previousLast": 99.0, "datetimeLast": "2026-11-03T21:58:00.000+01:00", "market": { "name": "Tradegate" } } ] } });
+        assert_eq!(parse_onvista_venue("X", &no_ls, "ls").unwrap()["price"], json!(102.0));
         let l = parse_listings("IE00B4L5Y983 EUNL.DE # iShares\nus8740541094=tradegate\n\nbad");
         assert_eq!(l.get("IE00B4L5Y983").map(String::as_str), Some("EUNL.DE"));
         assert_eq!(l.get("US8740541094").map(String::as_str), Some("tradegate"));

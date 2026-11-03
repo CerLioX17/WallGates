@@ -1,6 +1,6 @@
 [package]
 name = "wallgates"
-version = "0.10.2"
+version = "0.10.3"
 description = "Open-source, fully customizable live wallpaper engine"
 authors = ["Wallgates contributors"]
 license = "GPL-3.0-or-later"

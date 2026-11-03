@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.10.3
+**Trade Republic Portfolio: fixes impossible week / month / YTD / 1-year amounts.**
+- Price history from a listing in another currency (e.g. a London line quoted in **pence**) was read in the live
+  venue's currency, so the portfolio's past value could be counted ~100× too high and periods showed thousands of
+  euros "lost". The history now carries its own currency, and any series whose latest close doesn't match the live
+  price is rescaled onto it.
+- If Lang & Schwarz has no quote for an instrument, the most recently traded venue is used instead of a stale one.
+
 ## 0.10.2
 **Trade Republic Portfolio: daily changes from Trade Republic's own venue.**
 - Live prices now come from the **Lang & Schwarz Exchange** (through onvista), the venue Trade Republic trades on,

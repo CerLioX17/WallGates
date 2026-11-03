@@ -128,8 +128,7 @@
     if (h?.length) {
       let lo = 0, hi = h.length - 1, best = -1; const s = t / 1000;
       while (lo <= hi) { const m = (lo + hi) >> 1; if (h[m][0] <= s) { best = m; lo = m + 1; } else hi = m - 1; }
-      if (best >= 0) return h[best][1] * fxTo(q.currency);
-      return h[0][1] * fxTo(q.currency);
+      return h[Math.max(0, best)][1] * histScale(q);
     }
     return null;
   }
@@ -138,6 +137,19 @@
   const parseOverrides = (txt) => Object.fromEntries(String(txt || '').split(/\r?\n/).map((l) => l.split('#')[0].trim().split(/[\s;=]+/))
     .filter((a) => a.length >= 2 && isFinite(parseFloat(a[1].replace(',', '.')))).map((a) => [a[0].toUpperCase(), parseFloat(a[1].replace(',', '.'))]));
   const missingFx = new Set();
+  // History closes → base currency. The history listing can differ from the live venue (e.g. GBp in London vs EUR on
+  // Lang & Schwarz), so convert with the history's own currency, then check the latest close against the live price:
+  // a big mismatch means different units (pence, share class) and the series is rescaled onto the live price.
+  const scaleCache = new WeakMap();
+  function histScale(q) {
+    if (scaleCache.has(q)) return scaleCache.get(q);
+    let k = fxTo(q.historyCurrency || q.currency);
+    const last = q.history?.[q.history.length - 1]?.[1];
+    const live = q.price != null ? q.price * fxTo(q.currency) : null;
+    if (last && live) { const r = live / (last * k); if (r > 1.25 || r < 0.8) k *= r; }
+    scaleCache.set(q, k);
+    return k;
+  }
   const priceNow = (p) => {
     if (overrides[p.isin] != null) return overrides[p.isin];
     const q = quoteOf(p.id);
@@ -209,9 +221,10 @@
     if (!sessionToday) return { now, prev: now };
     // Lang & Schwarz / Tradegate (onvista): the venue's own previous close — exactly Trade Republic's reference.
     // Yahoo: the last completed daily close (its "previous close" field is unreliable on some listings).
-    const prevRaw = q.source === 'onvista' ? q.previousClose : lastClose(q) ?? q.previousClose;
-    if (prevRaw == null) return null;
-    return { now, prev: prevRaw * fxPrevTo(q.currency) * f };
+    if (q.source === 'onvista') return q.previousClose == null ? null : { now, prev: q.previousClose * fxPrevTo(q.currency) * f };
+    const lc = lastClose(q);
+    if (lc != null) return { now, prev: lc * histScale(q) * (fxPrevTo(q.historyCurrency || q.currency) / fxTo(q.historyCurrency || q.currency) || 1) * f };
+    return q.previousClose == null ? null : { now, prev: q.previousClose * fxPrevTo(q.currency) * f };
   }
   function dayGain() {
     let g = 0, base = 0;
