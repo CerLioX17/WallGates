@@ -74,6 +74,20 @@ fn is_gpu(t: &str) -> bool {
 fn is_memory(t: &str) -> bool {
     t == "Memory"
 }
+/// RAM module sensors show up under different names depending on the
+/// LibreHardwareMonitor version and board: "Memory" hardware, "DIMM #n",
+/// SPD hub ("SPD5118"), "DDR5"... GPU memory sensors are excluded.
+fn is_ram_sensor(x: &LhmReading) -> bool {
+    if is_gpu(&x.hw_type) || is_storage(&x.hw_type) || is_cpu(&x.hw_type) {
+        return false;
+    }
+    if is_memory(&x.hw_type) {
+        return true;
+    }
+    let text = format!("{} {}", x.hw, x.name).to_ascii_lowercase();
+    ["dimm", "spd", "ddr4", "ddr5", "memory module", "ram "].iter().any(|k| text.contains(k))
+}
+
 fn is_storage(t: &str) -> bool {
     t == "Storage"
 }
@@ -90,7 +104,7 @@ pub fn summarize(r: &[LhmReading]) -> Summary {
     Summary {
         cpu_temp,
         cpu_power: named(r, is_cpu, "Power", &["Package", "CPU Package"]),
-        ram_temp: max(temps(r, is_memory).map(|x| x.value)),
+        ram_temp: max(r.iter().filter(|x| x.kind == "Temperature" && x.value > 0.0 && x.value < 120.0 && is_ram_sensor(x)).map(|x| x.value)),
         gpu_temp: named(r, is_gpu, "Temperature", &["GPU Core"]),
         gpu_hotspot: named(r, is_gpu, "Temperature", &["GPU Hot Spot", "GPU Memory Junction"]),
         gpu_power: named(r, is_gpu, "Power", &["GPU Package", "GPU Power", "GPU Core"]),
@@ -329,6 +343,10 @@ mod tests {
         assert_eq!(s.cpu_temp, Some(68.4));
         assert_eq!(s.cpu_power, Some(88.2));
         assert_eq!(s.ram_temp, Some(46.0));
+        // Other naming schemes (SuperIO / SPD hub hardware).
+        let alt = summarize(&[r("Kingston FURY DDR5 (SPD5118)", "Motherboard", "DIMM #2 Temperature", "Temperature", 41.5),
+                              r("NVIDIA GeForce RTX 4080", "GpuNvidia", "GPU Memory Junction", "Temperature", 80.0)]);
+        assert_eq!(alt.ram_temp, Some(41.5));
         assert_eq!(s.gpu_hotspot, Some(72.0));
         assert_eq!(s.storage, vec![("Samsung SSD 990 PRO 2TB".to_string(), 48.0)]);
         assert_eq!(s.fans, vec![("CPU Fan".to_string(), 1240.0)]);

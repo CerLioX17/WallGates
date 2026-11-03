@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.6.0
+**System Terminal 3.0 — a real command prompt.**
+- Redesigned as a plain console window (Command Prompt, PowerShell, Wallgates, green or amber
+  palettes) that sits where you want it — right, left, center or a corner — with adjustable width,
+  opacity and an optional title bar. No gauges, graphs, noise, glow or background effects.
+- Everything is text: htop-style meters `[||||    48.0%]`, temperatures, a top-5 process table,
+  network, fans, weather with UV / air quality, a 4-day forecast table, sun and moon, now playing and
+  optional `▁▃▅▇` load history. Types `wallgates status --live` on start.
+- Text automatically scales so the window always fits the screen (16:9, 16:10, 21:9).
+
+**Sensors**
+- RAM temperature detection now also recognises DIMM / SPD-hub sensors reported under other hardware
+  names. When a memory kit has no temperature sensor, the terminal says so instead of a blank value.
+
 ## 0.5.0
 **Advanced sensors, built in.** No second app to install: Wallgates → Settings → *Advanced sensors* →
 *Enable* adds CPU and RAM temperatures, CPU power, GPU hotspot and every fan to wallpapers like System

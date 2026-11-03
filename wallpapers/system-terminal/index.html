@@ -4,588 +4,258 @@
 <meta charset="utf-8">
 <script src="/__wallgates/wallgates-sdk.js"></script>
 <style>
-  :root {
-    --bg: #05040b; --fg: #d9dcff; --dim: #6e7199; --hi: #22d3ee; --hi2: #a78bfa; --hi3: #ec4899;
-    --warn: #fbbf24; --bad: #fb7185; --ok: #34d399; --line: rgba(167, 139, 250, 0.24);
-    --fs: 1; --glow: 0.55; --scan: 0.35; --noise: 0.05; --vig: 0.55;
-    --logo: linear-gradient(180deg, #22d3ee, #8b5cf6 55%, #ec4899);
-  }
-  body.mono { --bg: #0b0b0b; --fg: #d6d6d6; --dim: #767676; --hi: #ffffff; --hi2: #a8a8a8; --hi3: #d0d0d0; --ok: #e0e0e0; --line: rgba(255,255,255,0.15); --logo: linear-gradient(180deg, #fff, #8a8a8a); }
-  body.amber { --bg: #0a0600; --fg: #ffc04d; --dim: #a5741f; --hi: #ffd27a; --hi2: #ff9d00; --hi3: #ffb347; --ok: #ffd27a; --line: rgba(255,170,0,0.24); --logo: linear-gradient(180deg, #ffe0a0, #ff9d00); }
-  body.green { --bg: #010803; --fg: #5dff94; --dim: #2d8a51; --hi: #b6ffcb; --hi2: #39ff78; --hi3: #8affb0; --ok: #b6ffcb; --line: rgba(57,255,120,0.22); --logo: linear-gradient(180deg, #d4ffe0, #39ff78); }
+  /* Palettes follow the Windows Terminal schemes (Campbell / PowerShell). */
+  :root { --desk: #000; --bg: #0c0c0c; --fg: #cccccc; --hi: #f2f2f2; --dim: #767676; --lab: #3a96dd;
+          --ok: #13a10e; --warn: #c19c00; --bad: #e74856; --acc: #61d6d6; --bar: #3b3b3b; --title: #1f1f1f; --fs: 14px; --w: 42vw; --op: 0.94; }
+  body.powershell { --bg: #012456; --fg: #eeedf0; --hi: #ffffff; --dim: #8a9cc2; --lab: #f9f1a5; --ok: #16c60c; --warn: #f9f1a5; --bad: #ff6b6b; --acc: #61d6d6; --bar: #24427a; --title: #0a1f47; }
+  body.wallgates { --bg: #0b0a14; --fg: #d4d7f5; --hi: #ffffff; --dim: #6e7199; --lab: #a78bfa; --ok: #22d3ee; --warn: #fbbf24; --bad: #fb7185; --acc: #22d3ee; --bar: #24223a; --title: #141226; }
+  body.green { --bg: #000a02; --fg: #33ff66; --hi: #b6ffcb; --dim: #1f8c3f; --lab: #7dff9f; --ok: #33ff66; --warn: #d6ff33; --bad: #ff5555; --acc: #b6ffcb; --bar: #0a2a12; --title: #021405; }
+  body.amber { --bg: #0a0600; --fg: #ffb000; --hi: #ffd27a; --dim: #9a6a10; --lab: #ffd27a; --ok: #ffb000; --warn: #ffe08a; --bad: #ff5a36; --acc: #ffd27a; --bar: #2a1a00; --title: #140c00; }
+  body.bg-graphite { --desk: #1a1b1f; }
+  body.bg-navy { --desk: #0a1226; }
+  body.bg-wallgates { --desk: linear-gradient(160deg, #0d0b1d 0%, #07070e 55%, #0b1320 100%); }
 
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden; }
-  body {
-    background: radial-gradient(80% 70% at 50% 35%, color-mix(in srgb, var(--hi2) 9%, var(--bg)), var(--bg));
-    color: var(--fg); font: calc(min(0.72vw, 1.28vh) * var(--fs)) / 1.38 "Cascadia Mono", "Cascadia Code", "JetBrains Mono", Consolas, ui-monospace, monospace;
-    text-shadow: 0 0 calc(0.6em * var(--glow)) color-mix(in srgb, var(--fg) calc(var(--glow) * 70%), transparent);
-  }
-  body.aberration .screen { text-shadow: -0.06em 0 rgba(255, 40, 80, 0.32), 0.06em 0 rgba(0, 220, 255, 0.32), 0 0 calc(0.6em * var(--glow)) color-mix(in srgb, var(--fg) calc(var(--glow) * 70%), transparent); }
-  body.flicker .screen { animation: flicker 6s infinite; }
-  body.paused .screen, body.paused .bad { animation: none; }
-  @keyframes flicker { 0%, 97%, 100% { opacity: 1; } 98% { opacity: 0.86; } 99% { opacity: 0.95; } }
+  body { background: var(--desk); display: flex; padding: 3.2vh 2.4vw; font-family: "Cascadia Mono", "Cascadia Code", Consolas, "Lucida Console", ui-monospace, monospace; }
+  body.pos-right { justify-content: flex-end; align-items: center; }
+  body.pos-left { justify-content: flex-start; align-items: center; }
+  body.pos-center { justify-content: center; align-items: center; }
+  body.pos-top-right { justify-content: flex-end; align-items: flex-start; }
+  body.pos-top-left { justify-content: flex-start; align-items: flex-start; }
+  body.pos-bottom-right { justify-content: flex-end; align-items: flex-end; }
+  body.pos-bottom-left { justify-content: flex-start; align-items: flex-end; }
 
-  .fx { position: fixed; inset: 0; pointer-events: none; z-index: 20; }
-  .scan { background: repeating-linear-gradient(0deg, rgba(0,0,0,0.5) 0 1px, transparent 1px 3px); opacity: var(--scan); }
-  .vig { background: radial-gradient(ellipse at center, transparent 58%, rgba(0,0,0,0.9)); opacity: var(--vig); }
-  canvas.noise { opacity: var(--noise); width: 100%; height: 100%; mix-blend-mode: screen; }
-
-  .screen { position: absolute; inset: 0; padding: min(1.7vw, 3vh) 2vw min(1.4vw, 2.5vh); display: grid; gap: min(1.3vw, 2.3vh) 1vw;
-    grid-template-columns: repeat(4, 1fr); grid-template-rows: auto minmax(0, 1.12fr) minmax(0, 1fr) auto; }
-  .boot { position: absolute; inset: 0; padding: 3vw; white-space: pre-wrap; z-index: 5; background: var(--bg);
-    display: flex; flex-direction: column; align-items: center; justify-content: center; }
-  .boot > div { min-width: 34em; }
-  .boot pre, .logo { margin: 0; font-family: inherit; line-height: 1.05; background: var(--logo); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; }
-
-  .k { color: var(--dim); }
-  .hi { color: var(--hi); }
-  .row { display: flex; justify-content: space-between; align-items: baseline; gap: 0.8em; white-space: nowrap; }
-  .warn { color: var(--warn) !important; }
-  .bad { color: var(--bad) !important; animation: pulse 1s infinite; }
-  @keyframes pulse { 50% { opacity: 0.45; } }
-  .hidden { display: none !important; }
-
-  /* ---------- header */
-  header { grid-column: 1 / -1; display: grid; grid-template-columns: 1.25fr 1fr 1.6fr; gap: 2vw; align-items: center; border-bottom: 1px solid var(--line); padding-bottom: min(1vw, 1.8vh); }
-  .ident { display: flex; align-items: center; gap: 1.3vw; min-width: 0; }
-  .ident .logo { font-size: 0.42em; }
-  .ident h1 { margin: 0; font-size: 1.55em; letter-spacing: 0.24em; color: var(--hi); }
-  .ident .meta { color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .clock { text-align: center; }
-  .clock .t { font-size: 4.4em; font-weight: 200; line-height: 1; letter-spacing: 0.04em; color: var(--fg); font-variant-numeric: tabular-nums; }
-  .clock .t small { font-size: 0.42em; color: var(--dim); margin-left: 0.15em; }
-  .clock .d { color: var(--dim); letter-spacing: 0.12em; margin-top: 0.35em; }
-  .progress { display: flex; gap: 1.2em; justify-content: center; margin-top: 0.5em; color: var(--dim); font-size: 0.9em; }
-  .progress b { color: var(--hi2); font-weight: 400; }
-  .now { display: grid; grid-template-columns: auto 1fr auto; gap: 1.2vw; align-items: center; }
-  .now svg.wx { width: 4.6em; height: 4.6em; color: var(--hi); }
-  .now .temp { font-size: 3.4em; font-weight: 200; line-height: 1; }
-  .now .cond { color: var(--fg); letter-spacing: 0.06em; }
-  .now .facts { display: grid; grid-template-columns: auto auto; gap: 0.15em 1em; font-size: 0.95em; }
-  .badge { display: inline-block; padding: 0.05em 0.55em; border-radius: 0.3em; font-weight: 700; color: #08080f; text-shadow: none; }
-  .hint { color: var(--dim); font-size: 0.95em; white-space: normal; }
-
-  /* ---------- panels */
-  .panel { border: 1px solid var(--line); padding: min(1.15vw, 2vh) 1.1vw min(0.9vw, 1.6vh); min-height: 0; position: relative; display: flex; flex-direction: column;
-    background: color-mix(in srgb, var(--bg) 72%, transparent); }
-  .panel::before { content: attr(data-title); position: absolute; top: -0.75em; left: 0.8vw; padding: 0 0.5em; background: var(--bg); color: var(--hi2); letter-spacing: 0.22em; font-size: 0.9em; z-index: 1; line-height: 1.5; }
-  .panel .model { color: var(--dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 0.4vw; }
-
-  .gauges { display: grid; grid-template-columns: 1fr 1fr; gap: 0.6vw; }
-  .gauge { position: relative; aspect-ratio: 1.55; max-height: 15vh; }
-  .gauge svg { width: 100%; height: 100%; overflow: visible; }
-  .gauge .val { position: absolute; left: 0; right: 0; top: 34%; text-align: center; font-size: 2.15em; font-weight: 300; line-height: 1; }
-  .gauge .lab { position: absolute; left: 0; right: 0; bottom: 4%; text-align: center; color: var(--dim); letter-spacing: 0.18em; font-size: 0.8em; }
-  .gauge .need { position: absolute; left: 0; right: 0; bottom: -1.3em; text-align: center; color: var(--dim); font-size: 0.75em; }
-  canvas.graph { width: 100%; flex: 1; min-height: 3.5vh; display: block; margin: 0.4vw 0; }
-  .legend { display: flex; gap: 1em; font-size: 0.8em; color: var(--dim); }
-  .legend i { display: inline-block; width: 1em; height: 2px; vertical-align: middle; margin-right: 0.4em; }
-  .details { display: grid; grid-template-columns: auto 1fr; gap: 0.1vw 0.8vw; margin-top: 0.3vw; }
-  .details dd { margin: 0; text-align: right; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .cores { display: grid; grid-template-columns: repeat(16, 1fr); gap: 2px; margin-top: 0.35vw; }
-  .cores i { height: 1vh; background: var(--hi); opacity: 0.15; }
-  .bar { height: 0.42vw; background: color-mix(in srgb, var(--dim) 30%, transparent); position: relative; margin: 0.25vw 0 0.35vw; }
-  .bar > i { position: absolute; inset: 0 auto 0 0; background: linear-gradient(90deg, var(--hi), var(--hi2)); }
-
-  .procs { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
-  .procs td { padding: 0.32vw 0; white-space: nowrap; }
-  .procs td.n { max-width: 9vw; overflow: hidden; text-overflow: ellipsis; }
-  .procs td.r { text-align: right; padding-left: 0.6em; }
-  .procs .pb { height: 0.25vw; background: color-mix(in srgb, var(--dim) 25%, transparent); margin-top: 0.15vw; position: relative; }
-  .procs .pb i { position: absolute; inset: 0 auto 0 0; background: var(--hi2); }
-  .rank { color: var(--hi2); margin-right: 0.5em; }
-
-  .forecast { grid-column: span 2; }
-  .days { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.8vw; }
-  .days .hint { grid-column: 1 / -1; }
-  .day { text-align: center; border: 1px solid color-mix(in srgb, var(--line) 60%, transparent); padding: 0.5vw 0.3vw; }
-  .day.today { border-color: var(--hi2); }
-  .day .dn { letter-spacing: 0.16em; color: var(--hi2); font-size: 0.85em; }
-  .day svg.wx { width: 2.8em; height: 2.8em; color: var(--hi); margin: 0.2em auto; display: block; }
-  .day .mm { font-size: 1.25em; }
-  .day .mm span { color: var(--dim); }
-  .day .sub { color: var(--dim); font-size: 0.82em; }
-  .sun { display: flex; justify-content: space-between; gap: 1em; margin-top: 0.5vw; color: var(--dim); white-space: nowrap; }
-  .sun b { color: var(--fg); font-weight: 400; }
-  .moon { width: 1.2em; height: 1.2em; vertical-align: middle; }
-
-  footer { grid-column: 1 / -1; display: grid; grid-template-columns: 1.3fr 1.4fr 1.6fr; gap: 1.5vw; align-items: center; color: var(--dim); border-top: 1px solid var(--line); padding-top: 0.7vw; }
-  .media { display: flex; align-items: center; gap: 0.8vw; min-width: 0; }
-  .media .art { width: 2.6vw; height: 2.6vw; flex: none; background: linear-gradient(135deg, var(--hi), var(--hi2)); background-size: cover; background-position: center; filter: saturate(0.9); }
-  .media .txt { min-width: 0; }
-  .media .tt { color: var(--fg); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .meter { display: flex; gap: 2px; align-items: flex-end; height: 2.4vw; }
-  .meter i { flex: 1; background: linear-gradient(0deg, var(--hi), var(--hi2)); opacity: 0.85; min-height: 1px; }
-  .log { font-size: 0.92em; overflow: hidden; }
-  .log p { margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .log .t { color: var(--dim); }
-  .cursor { animation: blink 1s steps(2) infinite; }
+  .win { width: var(--w); max-height: 100%; display: flex; flex-direction: column; background: color-mix(in srgb, var(--bg) calc(var(--op) * 100%), transparent);
+         border: 1px solid color-mix(in srgb, var(--dim) 45%, transparent); box-shadow: 0 1.2vh 4vh rgba(0, 0, 0, 0.55); }
+  .title { display: flex; align-items: center; gap: 0.7em; height: 2.1em; padding: 0 0 0 0.8em; background: var(--title); color: var(--fg);
+           font: calc(var(--fs) * 0.82) "Segoe UI", system-ui, sans-serif; flex: none; }
+  .title .ico { width: 1.25em; height: 1.25em; border: 1px solid var(--dim); font: 700 0.7em/1.6 Consolas, monospace; text-align: center; color: var(--fg); }
+  .title .name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0.9; }
+  .title .ctl { display: flex; height: 100%; }
+  .title .ctl span { width: 3.2em; display: grid; place-items: center; opacity: 0.75; }
+  pre { margin: 0; padding: 0.7em 1em 0.9em; font-size: var(--fs); line-height: 1.32; font-family: inherit; color: var(--fg); white-space: pre; overflow: hidden; }
+  .hi { color: var(--hi); } .dim { color: var(--dim); } .lab { color: var(--lab); } .acc { color: var(--acc); }
+  .ok { color: var(--ok); } .warn { color: var(--warn); } .bad { color: var(--bad); }
+  .barbg { color: var(--bar); }
+  .cursor { display: inline-block; width: 0.6em; height: 1.05em; vertical-align: -0.15em; background: var(--fg); animation: blink 1.06s steps(2) infinite; }
+  body.paused .cursor { animation: none; }
   @keyframes blink { 50% { opacity: 0; } }
+  .logo { color: var(--lab); }
 </style>
 </head>
-<body class="wallgates aberration">
-<div class="boot" id="boot"></div>
-<div class="screen" id="screen">
-  <header>
-    <div class="ident">
-      <pre class="logo" id="miniLogo"></pre>
-      <div style="min-width:0">
-        <h1>WALLGATES // SYSTEM</h1>
-        <div class="meta" id="hostLine">—</div>
-        <div class="meta" id="opLine">—</div>
-      </div>
-    </div>
-    <div class="clock">
-      <div class="t" id="time">--:--</div>
-      <div class="d" id="date"></div>
-      <div class="progress" id="progress"></div>
-    </div>
-    <div class="now" id="now"><div class="hint">WEATHER OFFLINE — turn it on in Wallgates → Settings → Weather &amp; location and pick your city.</div></div>
-  </header>
-
-  <section class="panel" data-title="CPU" id="cpuCard"></section>
-  <section class="panel" data-title="GPU" id="gpuCard"></section>
-  <section class="panel" data-title="RAM" id="ramCard"></section>
-  <section class="panel" data-title="SSD" id="ssdCard"></section>
-
-  <section class="panel" data-title="TASK MANAGER · TOP 5" id="procPanel">
-    <table class="procs"><tbody id="procs"></tbody></table>
-  </section>
-  <section class="panel" data-title="NETWORK · FANS" id="netPanel">
-    <div class="row"><span><span class="k">▼ </span><span id="rx">—</span></span><span><span class="k">▲ </span><span id="tx">—</span></span></div>
-    <canvas class="graph" id="netGraph"></canvas>
-    <div class="legend"><span><i style="background:var(--hi)"></i>DOWN</span><span><i style="background:var(--hi3)"></i>UP</span><span id="netPeak"></span></div>
-    <dl class="details" id="fans"></dl>
-  </section>
-  <section class="panel forecast" data-title="FORECAST" id="forecast">
-    <div class="days" id="days"><div class="hint">Turn on weather in Wallgates → Settings → Weather &amp; location to see today and the next 3 days, the UV index and air quality.</div></div>
-    <canvas class="graph" id="hourGraph"></canvas>
-    <div class="legend"><span><i style="background:var(--hi)"></i>TEMP · NEXT 24H</span><span><i style="background:var(--hi2)"></i>RAIN %</span><span id="hourRange"></span></div>
-    <div class="sun" id="sun"></div>
-  </section>
-
-  <footer>
-    <div class="media" id="media"><div class="art" id="art"></div><div class="txt"><div class="tt" id="track">NOTHING PLAYING</div><div id="artist" class="k">♪ play something on Spotify, YouTube…</div></div></div>
-    <div class="meter" id="meter"></div>
-    <div class="log" id="log"></div>
-  </footer>
+<body class="cmd pos-right bg-black">
+<div class="win" id="win">
+  <div class="title" id="title"><span class="ico">C:\</span><span class="name" id="titleText">Wallgates — Command Prompt</span><span class="ctl"><span>&#x2014;</span><span>&#x2610;</span><span>&#x2715;</span></span></div>
+  <pre id="out"></pre>
 </div>
-<div class="fx vig"></div>
-<div class="fx scan"></div>
-<canvas class="fx noise" id="noise"></canvas>
 <script>
-// System Terminal v2 — Wallgates built-in wallpaper (CC BY 4.0).
+// System Terminal v3 — Wallgates built-in wallpaper (CC BY 4.0). A plain command prompt, no effects.
 const $ = (id) => document.getElementById(id);
-const LOGO = [
-  '            ▄▄▄██████▄▄▄',
-  '         ▄██▀▀ .:░░:. ▀▀██▄',
-  '       ▄█▀   .:░▒▓▓▒░:.   ▀█▄',
-  '      ██   .:░▒▓▓▓▓▓▓▒░:.   ██',
-  '     ██  .:░▒▓▓▓▓▓▓▓▓▓▓▒░:.  ██',
-  '     ██  :░▒▓▓▓▓▓▓▓▓▓▓▓▓▒░:  ██',
-  '     ██  ~~~~~~~~~~~~~~~~~~  ██',
-  '     ██  ░▒▒▓▓▓▓▓▓▓▓▓▓▓▓▒▒░  ██',
-  '     ██  ~ ~~ ~~~ ~~~ ~~ ~   ██',
-  '     ██  ░░▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░  ██',
-  '     ██   ~~  ~~~  ~~~  ~~   ██',
-  '  ▀▀▀██▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀██▀▀▀',
-].join('\n');
 const lang = navigator.language || 'en-US';
-let o = {}, s = null, w = null, booted = false;
-const H = { cpu: [], cpuT: [], gpu: [], gpuT: [], ram: [], ramT: [], ssd: [], ssdT: [], rx: [], tx: [] };
-const logLines = [], alerts = {};
+const COLS = 84;
+const LOGO = [
+  '      ▄▄▄██████▄▄▄',
+  '   ▄██▀▀ .:░░:. ▀▀██▄',
+  ' ▄█▀   .:░▒▓▓▒░:.   ▀█▄',
+  ' ██  .:░▒▓▓▓▓▓▓▒░:.  ██',
+  ' ██  ~~~~~~~~~~~~~~  ██',
+  ' ██  ░▒▒▓▓▓▓▓▓▓▓▒▒░  ██',
+  '▀██▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀██▀',
+];
+let o = {}, s = null, w = null, media = null;
+let typed = '', typingDone = false;
+const hist = { cpu: [], gpu: [], ram: [], ssd: [] };
 
-// ---------------------------------------------------------------- helpers
-const el = (tag, cls, text) => { const n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; };
+// ---------------------------------------------------------------- text helpers
+// A line is a list of [text, class] segments; rendering escapes everything.
+const seg = (t, c) => [String(t), c || ''];
+const pad = (t, n) => { t = String(t); return t.length >= n ? t.slice(0, n) : t + ' '.repeat(n - t.length); };
+const lpad = (t, n) => { t = String(t); return t.length >= n ? t.slice(0, n) : ' '.repeat(n - t.length) + t; };
 const bytes = (b) => { if (b == null || !isFinite(b)) return '—'; const u = ['B', 'KB', 'MB', 'GB', 'TB']; let i = 0; while (b >= 1024 && i < 4) { b /= 1024; i++; } return `${b.toFixed(b < 10 && i ? 1 : 0)} ${u[i]}`; };
 const rate = (b) => (b == null ? '—' : bytes(b) + '/s');
-const tC = (c) => (c == null ? '—' : o.fahrenheit ? `${Math.round(c * 9 / 5 + 32)}°F` : `${Math.round(c)}°C`);
-const pct = (v) => (v == null ? '—' : `${Math.round(v)}%`);
-const push = (a, v) => { a.push(v ?? null); while (a.length > 90) a.shift(); };
-const css = (name) => getComputedStyle(document.body).getPropertyValue(name).trim();
-function level(node, v, warnAt, badAt) { node.classList.toggle('warn', v != null && v >= warnAt && v < badAt); node.classList.toggle('bad', v != null && v >= badAt); }
+const deg = (c) => (c == null ? '  — ' : o.fahrenheit ? `${Math.round(c * 9 / 5 + 32)}°F` : `${Math.round(c)}°C`);
+const lvl = (v, warn, bad) => (v == null ? 'dim' : v >= bad ? 'bad' : v >= warn ? 'warn' : 'ok');
+const SPARK = '▁▂▃▄▅▆▇█';
+const clip = (t, n) => { t = String(t); return t.length > n ? t.slice(0, n - 1) + '…' : t; };
+const spark = (arr) => arr.slice(-12).map((v) => (v == null ? ' ' : SPARK[Math.min(7, Math.floor((v / 100) * 8))])).join('');
+const push = (a, v) => { a.push(v ?? null); while (a.length > 30) a.shift(); };
 
-function log(msg, kind = '') {
-  const t = new Date().toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
-  logLines.push({ t, msg, kind });
-  while (logLines.length > 30) logLines.shift();
-  $('log').replaceChildren(...logLines.slice(-3).map((l) => {
-    const p = el('p'); p.append(el('span', 't', `[${l.t}] `), el('span', l.kind, l.msg)); return p;
-  }));
-}
-function alertOnce(key, on, msg) {
-  if (on && !alerts[key]) log(msg, 'bad');
-  if (!on && alerts[key]) log(`${key.toUpperCase()} BACK TO NORMAL`);
-  alerts[key] = on;
+// htop-style meter: [||||||||          48.0%]
+function meter(v, width, warn, bad) {
+  if (v == null) return [seg('['), seg(' '.repeat(width), 'barbg'), seg(lpad('n/a', 6), 'dim'), seg(']')];
+  const inner = width;
+  const n = Math.round(Math.max(0, Math.min(100, v)) / 100 * inner);
+  return [seg('['), seg('|'.repeat(n), lvl(v, warn, bad)), seg(' '.repeat(inner - n)), seg(lpad(`${v.toFixed(1)}%`, 6), 'hi'), seg(']')];
 }
 
-// Ring gauge: value 0..max, colored by thresholds.
-function gauge(label, value, text, max, warnAt, badAt, need) {
-  const box = el('div', 'gauge');
-  const v = value == null ? 0 : Math.max(0, Math.min(1, value / max));
-  const color = value == null ? css('--dim') : value >= badAt ? css('--bad') : value >= warnAt ? css('--warn') : css('--hi');
-  const r = 40, c = Math.PI * r; // half-ish arc (240°)
-  const arc = (2 * Math.PI * r) * (240 / 360);
-  box.innerHTML = `<svg viewBox="0 0 100 70"><g transform="rotate(150 50 50)">
-    <circle cx="50" cy="50" r="${r}" fill="none" stroke="${css('--line')}" stroke-width="6" stroke-dasharray="${arc} 999" stroke-linecap="round"/>
-    <circle cx="50" cy="50" r="${r}" fill="none" stroke="${color}" stroke-width="6" stroke-dasharray="${arc * v} 999" stroke-linecap="round"
-      style="filter: drop-shadow(0 0 ${3 * (o.glow ?? 0.5)}px ${color})"/></g></svg>`;
-  const val = el('div', 'val', text); val.style.color = color;
-  box.append(val, el('div', 'lab', label));
-  if (need && value == null) box.append(el('div', 'need', need));
-  void c;
-  return box;
-}
+// ---------------------------------------------------------------- build output
+function lines() {
+  const L = [];
+  const user = String(o.operator || 'Operator').replace(/[^\w.-]/g, '') || 'Operator';
+  const prompt = `C:\\Users\\${user}>`;
+  L.push([seg(`Wallgates OS [Version ${'0.6'}]`, 'dim')]);
+  L.push([seg('(c) Wallgates contributors. GPL-3.0.', 'dim')]);
+  L.push([]);
+  L.push([seg(prompt), seg(' '), seg(typed, 'hi'), typingDone ? seg('') : ['', 'cursor']]);
+  if (!typingDone) return L;
+  L.push([]);
 
-// Dual line graph: load (solid) + temperature (dashed), both 0..100.
-function graph(canvas, a, b, maxA = 100, maxB = 100) {
-  if (!canvas || !canvas.offsetWidth) return;
-  const w = canvas.width = canvas.offsetWidth * devicePixelRatio, h = canvas.height = canvas.offsetHeight * devicePixelRatio;
-  const g = canvas.getContext('2d');
-  g.strokeStyle = css('--line'); g.lineWidth = 1;
-  for (let i = 1; i < 4; i++) { g.beginPath(); g.moveTo(0, (h / 4) * i); g.lineTo(w, (h / 4) * i); g.stroke(); }
-  const line = (arr, max, color, dash, fill) => {
-    const pts = arr.map((v, i) => [(i / 89) * w, v == null ? null : h - Math.min(1, v / max) * (h - 3) - 1.5]).filter((p) => p[1] != null);
-    if (pts.length < 2) return;
-    g.setLineDash(dash ? [4 * devicePixelRatio, 3 * devicePixelRatio] : []);
-    g.beginPath(); pts.forEach(([x, y], i) => (i ? g.lineTo(x, y) : g.moveTo(x, y)));
-    g.strokeStyle = color; g.lineWidth = 1.6 * devicePixelRatio; g.stroke();
-    if (fill) {
-      g.lineTo(pts[pts.length - 1][0], h); g.lineTo(pts[0][0], h); g.closePath();
-      const grad = g.createLinearGradient(0, 0, 0, h); grad.addColorStop(0, color + '55'); grad.addColorStop(1, color + '00');
-      g.fillStyle = grad; g.setLineDash([]); g.fill();
-    }
-  };
-  line(a, maxA, css('--hi'), false, true);
-  if (b) line(b, maxB, css('--hi3'), true, false);
-}
+  if (o.showLogo) { for (const l of LOGO) L.push([seg('  ' + l, 'logo')]); L.push([]); }
 
-function card(id, model, gauges, a, b, details, extra) {
-  const c = $(id);
-  const canvas = el('canvas', 'graph');
-  const legend = el('div', 'legend');
-  legend.innerHTML = `<span><i style="background:var(--hi)"></i>LOAD</span>${b ? '<span><i style="background:var(--hi3)"></i>TEMP</span>' : ''}`;
-  const dl = el('dl', 'details');
-  for (const [k, v, cls] of details) { dl.append(el('dt', 'k', k), el('dd', cls || '', v)); }
-  c.replaceChildren(el('div', 'model', model), el('div', 'gauges'), canvas, legend, dl, ...(extra || []));
-  c.querySelector('.gauges').append(...gauges);
-  graph(canvas, a, b);
-}
+  const now = new Date();
+  const time = now.toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: !o.format24 });
+  const date = now.toLocaleDateString(lang, { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
+  L.push([seg(' TIME     ', 'lab'), seg(time, 'hi'), seg(`  ${date}`)]);
+  if (s) {
+    const up = s.uptime || 0;
+    L.push([seg(' HOST     ', 'lab'), seg(`${s.host || '?'}`, 'hi'), seg(`  ${s.os || ''}`), seg(`  up ${Math.floor(up / 86400)}d ${String(Math.floor(up % 86400 / 3600)).padStart(2, '0')}:${String(Math.floor(up % 3600 / 60)).padStart(2, '0')}`, 'dim')]);
+  }
+  L.push([]);
 
-// ---------------------------------------------------------------- weather icons
-function wxIcon(cond, isDay = true) {
-  const sun = '<circle cx="24" cy="24" r="7"/><path d="M24 9v4M24 35v4M9 24h4M35 24h4M13.4 13.4l2.8 2.8M31.8 31.8l2.8 2.8M13.4 34.6l2.8-2.8M31.8 16.2l2.8-2.8"/>';
-  const moon = '<path d="M30 12a12 12 0 1 0 6 21 10 10 0 0 1-6-21z"/>';
-  const cloud = '<path d="M15 36h19a7 7 0 0 0 0-14 10 10 0 0 0-19-2 8 8 0 0 0 0 16z"/>';
-  const map = {
-    clear: isDay ? sun : moon,
-    cloudy: `<g transform="translate(-6 -6) scale(.7)">${isDay ? sun : moon}</g>${cloud}`,
-    fog: '<path d="M8 18h32M6 25h36M10 32h28M14 39h20"/>',
-    rain: `${cloud}<path d="M17 40l-2 5M24 40l-2 5M31 40l-2 5"/>`.replace('36h19', '32h19').replace('a7 7 0 0 0 0-14', 'a7 7 0 0 0 0-14'),
-    snow: `${cloud}<path d="M17 42h.01M24 44h.01M31 42h.01"/>`,
-    storm: `${cloud}<path d="M25 37l-4 6h5l-3 6"/>`,
-  };
-  const body = map[cond] || cloud;
-  return `<svg class="wx" viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">${body}</svg>`;
-}
-function uvInfo(uv) {
-  if (uv == null) return ['—', '#666'];
-  if (uv < 3) return ['LOW', '#34d399']; if (uv < 6) return ['MODERATE', '#facc15']; if (uv < 8) return ['HIGH', '#fb923c'];
-  if (uv < 11) return ['VERY HIGH', '#f87171']; return ['EXTREME', '#c084fc'];
-}
-function aqiInfo(a) {
-  if (a == null) return ['—', '#666'];
-  if (a <= 20) return ['GOOD', '#34d399']; if (a <= 40) return ['FAIR', '#a3e635']; if (a <= 60) return ['MODERATE', '#facc15'];
-  if (a <= 80) return ['POOR', '#fb923c']; if (a <= 100) return ['VERY POOR', '#f87171']; return ['EXTREMELY POOR', '#c084fc'];
-}
-function moonPhase(date) {
-  const syn = 29.530588853, ref = Date.UTC(2000, 0, 6, 18, 14) / 86400000;
-  const age = (((date.getTime() / 86400000 - ref) % syn) + syn) % syn;
-  const names = ['NEW MOON', 'WAXING CRESCENT', 'FIRST QUARTER', 'WAXING GIBBOUS', 'FULL MOON', 'WANING GIBBOUS', 'LAST QUARTER', 'WANING CRESCENT'];
-  const idx = Math.floor((age / syn) * 8 + 0.5) % 8;
-  const illum = Math.round((1 - Math.cos((2 * Math.PI * age) / syn)) / 2 * 100);
-  return { name: names[idx], illum, age };
-}
-function moonSvg(age) {
-  const syn = 29.530588853, p = age / syn;
-  const k = Math.cos(p * 2 * Math.PI); // 1 new, -1 full
-  const rx = Math.abs(k) * 10;
-  const waxing = p < 0.5;
-  const lit = `M12 2 A10 10 0 0 ${waxing ? 1 : 0} 12 22 A${rx} 10 0 0 ${(k > 0) === waxing ? 0 : 1} 12 2`;
-  return `<svg class="moon" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="${css('--line')}"/><path d="${lit}" fill="${css('--fg')}"/></svg>`;
-}
-const wt = (v) => (v == null ? '—' : `${Math.round(v)}°`);
-const hhmm = (iso) => (iso ? new Date(iso).toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit', hour12: !o.format24 }) : '—');
-
-// ---------------------------------------------------------------- render: hardware
-function renderHardware() {
-  if (!s) return;
+  if (!s) { L.push([seg(' Collecting system data…', 'dim')]); return L; }
   const g = s.gpu || {};
-  $('hostLine').textContent = `${s.host || 'HOST'} · ${s.os || ''}`;
-  const up = s.uptime || 0;
-  $('opLine').textContent = `OPERATOR ${String(o.operator || 'OPERATOR').toUpperCase()} · UPTIME ${Math.floor(up / 86400)}d ${String(Math.floor(up % 86400 / 3600)).padStart(2, '0')}h ${String(Math.floor(up % 3600 / 60)).padStart(2, '0')}m · ${s.processCount} PROCS`;
-
-  const hw = ' sensors';
-  // CPU
-  const cores = el('div', 'cores');
-  for (const c of s.cores || []) { const i = el('i'); i.style.opacity = 0.15 + Math.min(1, c / 100) * 0.85; if (c >= o.loadMax) i.style.background = css('--bad'); cores.append(i); }
-  cores.style.gridTemplateColumns = `repeat(${Math.min(32, Math.max(8, (s.cores || []).length))}, 1fr)`;
-  card('cpuCard', s.cpuName || 'CPU', [
-    gauge('LOAD', s.cpu, pct(s.cpu), 100, o.loadMax - 15, o.loadMax),
-    gauge('TEMP', s.cpuTemp, tC(s.cpuTemp), 100, o.cpuTempMax - 10, o.cpuTempMax, 'enable in Settings'),
-  ], H.cpu, H.cpuT, [
-    ['FREQUENCY', s.cpuFreq ? `${(s.cpuFreq / 1000).toFixed(2)} GHz` : '—'],
-    ['POWER', s.cpuPower != null ? `${Math.round(s.cpuPower)} W` : '—'],
-    ['THREADS', String((s.cores || []).length)],
-  ], [cores]);
-
-  // GPU
-  const vram = g.vramTotal ? (g.vramUsed || 0) / g.vramTotal * 100 : null;
-  const vbar = el('div', 'bar'); const vi = el('i'); vi.style.width = `${vram || 0}%`; vbar.append(vi);
-  card('gpuCard', g.name || 'GPU data unavailable', [
-    gauge('LOAD', g.usage, pct(g.usage), 100, o.loadMax - 15, o.loadMax),
-    gauge('TEMP', g.temp, tC(g.temp), 100, o.gpuTempMax - 10, o.gpuTempMax),
-  ], H.gpu, H.gpuT, [
-    ['VRAM', g.vramTotal ? `${bytes(g.vramUsed)} / ${bytes(g.vramTotal)}` : '—'],
-    ['FAN', g.fan ? `${g.fan} RPM` : '—'],
-    ['POWER', g.power != null ? `${Math.round(g.power)} W` : (g.hotspot != null ? `HOTSPOT ${tC(g.hotspot)}` : '—')],
-  ], [vbar]);
-
-  // RAM
-  const hog = (s.memoryHogs || [])[0];
-  const mbar = el('div', 'bar'); const mi = el('i'); mi.style.width = `${s.memory || 0}%`; mbar.append(mi);
-  card('ramCard', `${bytes(s.memoryTotal)} SYSTEM MEMORY`, [
-    gauge('USAGE', s.memory, pct(s.memory), 100, 80, 92),
-    gauge('TEMP', s.ramTemp, tC(s.ramTemp), 100, 60, 75, 'enable in Settings'),
-  ], H.ram, H.ramT, [
-    ['IN USE', `${bytes(s.memoryUsed)}`],
-    ['AVAILABLE', bytes(s.memoryAvailable)],
-    ['SWAP', s.swapTotal ? `${bytes(s.swapUsed)} / ${bytes(s.swapTotal)}` : '—'],
-    ['TOP', hog ? `${hog.name} ${bytes(hog.memory)}` : '—'],
-  ], [mbar]);
-
-  // SSD: system drive first.
   const drives = s.drives || [];
   const sys = drives.find((d) => /C:/i.test(d.letters || '')) || drives[0] || {};
   const vol = (s.disks || []).find((d) => /^C:/i.test(d.mount || '')) || (s.disks || [])[0];
-  const dbar = el('div', 'bar'); const di = el('i'); di.style.width = vol ? `${vol.used / vol.total * 100}%` : '0'; dbar.append(di);
-  const others = drives.filter((d) => d !== sys).slice(0, 2).map((d) => {
-    const r = el('div', 'row'); r.style.fontSize = '0.85em';
-    r.append(el('span', 'k', `${(d.letters || '').trim() || 'DISK ' + d.index} ${String(d.model || '').slice(0, 18)}`), el('span', null, `${pct(d.active)} · ${tC(d.temp)}`));
-    return r;
+
+  // Device table
+  L.push([seg(' ' + pad('DEVICE', 9), 'lab'), seg(pad('LOAD', 30), 'lab'), seg(lpad('TEMP', 6), 'lab'), seg('  INFO', 'lab')]);
+  const row = (name, load, temp, warnT, badT, info) => L.push([seg(' ' + pad(name, 9), 'hi'), ...meter(load, 22, o.loadMax - 15, o.loadMax), seg('  '), seg(lpad(deg(temp), 5), lvl(temp, warnT, badT)), seg('  ' + clip(info, COLS - 50), 'dim')]);
+  const cpuName = String(s.cpuName || 'CPU').replace(/\(R\)|\(TM\)|CPU|Processor|\d+-Core/gi, '').replace(/\s+/g, ' ').trim();
+  row('CPU', s.cpu, s.cpuTemp, o.cpuTempMax - 10, o.cpuTempMax, `${cpuName} · ${s.cpuFreq ? (s.cpuFreq / 1000).toFixed(2) + ' GHz' : ''}${s.cpuPower != null ? ' · ' + Math.round(s.cpuPower) + ' W' : ''} · ${(s.cores || []).length}T`);
+  const gpuName = String(g.name || 'n/a').replace(/NVIDIA |GeForce |AMD |Radeon |\(R\)/g, '');
+  row('GPU', g.usage, g.temp, o.gpuTempMax - 10, o.gpuTempMax, `${gpuName}${g.vramTotal ? ` · VRAM ${bytes(g.vramUsed)}/${bytes(g.vramTotal)}` : ''}${g.fan ? ` · ${g.fan} rpm` : ''}`);
+  row('RAM', s.memory, s.ramTemp, 55, 70, `${bytes(s.memoryUsed)}/${bytes(s.memoryTotal)} · free ${bytes(s.memoryAvailable)}${s.ramTemp == null ? ' · temp: no sensor' : ''}`);
+  const ssdName = String(sys.model || 'disk').replace(/Samsung SSD |WDC |WD_BLACK /i, '').slice(0, 16);
+  row(`SSD ${(sys.letters || '').split(' ')[0] || ''}`.trim(), sys.active, sys.temp, o.ssdTempMax - 10, o.ssdTempMax,
+    `${ssdName} · R ${rate(sys.read)} W ${rate(sys.write)}${vol ? ` · ${bytes(vol.used)}/${bytes(vol.total)}` : ''}`);
+  for (const d of drives.filter((d) => d !== sys).slice(0, 2)) {
+    row(`SSD ${(d.letters || '').split(' ')[0] || d.index}`, d.active, d.temp, o.ssdTempMax - 10, o.ssdTempMax, `${String(d.model || '').slice(0, 16)} · R ${rate(d.read)} W ${rate(d.write)}`);
+  }
+  if (o.showHistory) {
+    L.push([seg(' ' + pad('HISTORY', 9), 'lab'), seg('cpu ', 'dim'), seg(pad(spark(hist.cpu), 12), 'acc'), seg('  gpu ', 'dim'), seg(pad(spark(hist.gpu), 12), 'acc'),
+      seg('  ram ', 'dim'), seg(pad(spark(hist.ram), 12), 'acc'), seg('  ssd ', 'dim'), seg(pad(spark(hist.ssd), 12), 'acc')]);
+  }
+  L.push([]);
+
+  if (o.showProcs) {
+    L.push([seg(' ' + pad('TOP', 9), 'lab'), seg(pad('#  PROCESS', 30), 'lab'), seg(lpad('CPU', 7), 'lab'), seg(lpad('MEMORY', 10), 'lab')]);
+    (s.processes || []).slice(0, 5).forEach((p, i) => {
+      const name = p.name + (p.count > 1 ? ` (${p.count})` : '');
+      L.push([seg(' ' + ' '.repeat(9)), seg(`${i + 1}  `, 'dim'), seg(pad(name, 27), 'hi'), seg(lpad(`${p.cpu.toFixed(1)}%`, 7), lvl(p.cpu, 40, 80)), seg(lpad(bytes(p.memory), 10))]);
+    });
+    L.push([]);
+  }
+
+  if (o.showNet) {
+    L.push([seg(' ' + pad('NETWORK', 9), 'lab'), seg('down ', 'dim'), seg(pad(rate(s.net?.rx), 13), 'hi'), seg('up ', 'dim'), seg(pad(rate(s.net?.tx), 13), 'hi')]);
+    const fans = s.fans || [];
+    if (fans.length) L.push([seg(' ' + pad('FANS', 9), 'lab'), seg(fans.slice(0, 5).map((f) => `${f.label} ${f.rpm}`).join(' · '))]);
+    L.push([]);
+  }
+
+  if (o.showWeather) {
+    if (!w) {
+      L.push([seg(' ' + pad('WEATHER', 9), 'lab'), seg('offline — Wallgates → Settings → Weather & location', 'dim')]);
+    } else {
+      const uvTxt = (u) => (u == null ? '—' : u < 3 ? 'low' : u < 6 ? 'moderate' : u < 8 ? 'high' : u < 11 ? 'very high' : 'extreme');
+      const aqTxt = (a) => (a == null ? '—' : a <= 20 ? 'good' : a <= 40 ? 'fair' : a <= 60 ? 'moderate' : a <= 80 ? 'poor' : 'very poor');
+      const uvCls = (u) => (u == null ? 'dim' : u >= 8 ? 'bad' : u >= 6 ? 'warn' : 'ok');
+      const city = String(w.location || '').split(',')[0];
+      L.push([seg(' ' + pad('WEATHER', 9), 'lab'), seg(`${city} `, 'hi'), seg(`${Math.round(w.temperature)}${w.units || '°'} `, 'hi'), seg(clip(`${String(w.description || '').toLowerCase()} · feels ${Math.round(w.feelsLike)}° · hum ${Math.round(w.humidity)}% · wind ${Math.round(w.wind)} ${w.windUnits || ''}`, COLS - 18 - city.length))]);
+      L.push([seg(' ' + ' '.repeat(9)), seg('UV ', 'dim'), seg(`${w.uv != null ? Math.round(w.uv) : '—'} ${uvTxt(w.uv)}`, uvCls(w.uv)), seg(' · AQI ', 'dim'), seg(`${w.air?.aqi != null ? Math.round(w.air.aqi) : '—'} ${aqTxt(w.air?.aqi)}`, w.air?.aqi > 60 ? 'warn' : 'ok'),
+        seg(` · rain ${w.rainChance ?? '—'}% · ${w.pressure != null ? Math.round(w.pressure) : '—'} hPa`, 'dim')]);
+      L.push([]);
+      L.push([seg(' ' + pad('FORECAST', 9), 'lab'), seg(pad('DAY', 7), 'lab'), seg(pad('SKY', 18), 'lab'), seg(lpad('MAX', 5), 'lab'), seg(lpad('MIN', 5), 'lab'), seg(lpad('RAIN', 6), 'lab'), seg(lpad('UV', 4), 'lab')]);
+      (w.days || []).slice(0, 4).forEach((d, i) => {
+        const day = i === 0 ? 'today' : new Date(d.date + 'T12:00').toLocaleDateString(lang, { weekday: 'short' });
+        L.push([seg(' ' + ' '.repeat(9)), seg(pad(day, 7), i === 0 ? 'hi' : ''), seg(pad(String(d.description || '').toLowerCase(), 18), 'dim'),
+          seg(lpad(`${Math.round(d.max)}°`, 5), 'hi'), seg(lpad(`${Math.round(d.min)}°`, 5)), seg(lpad(`${d.rainChance ?? '—'}%`, 6), d.rainChance >= 60 ? 'acc' : ''), seg(lpad(d.uvMax != null ? Math.round(d.uvMax) : '—', 4), uvCls(d.uvMax))]);
+      });
+      L.push([]);
+    }
+  }
+
+  if (o.showSun && w) {
+    const today = (w.days || [])[0] || {};
+    const hm = (iso) => (iso ? new Date(iso).toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit', hour12: !o.format24 }) : '—');
+    const sr = today.sunrise ? new Date(today.sunrise) : null, ss = today.sunset ? new Date(today.sunset) : null;
+    let light = '';
+    if (sr && ss) { const left = (ss - now) / 60000; light = now < sr ? 'before sunrise' : left > 0 ? `${Math.floor(left / 60)}h ${Math.round(left % 60)}m of light left` : 'after sunset'; }
+    const syn = 29.530588853, age = ((((now.getTime() / 86400000) - Date.UTC(2000, 0, 6, 18, 14) / 86400000) % syn) + syn) % syn;
+    const names = ['new moon', 'waxing crescent', 'first quarter', 'waxing gibbous', 'full moon', 'waning gibbous', 'last quarter', 'waning crescent'];
+    const moon = `${names[Math.floor((age / syn) * 8 + 0.5) % 8]} ${Math.round((1 - Math.cos((2 * Math.PI * age) / syn)) / 2 * 100)}%`;
+    L.push([seg(' ' + pad('SUN', 9), 'lab'), seg(`rise ${hm(today.sunrise)} · set ${hm(today.sunset)} · ${light}`), seg(`  moon ${moon}`, 'dim')]);
+  }
+  if (o.showMedia && media?.title) {
+    L.push([seg(' ' + pad('MUSIC', 9), 'lab'), seg(`${media.playing ? '▶' : '❚❚'} `, 'acc'), seg(media.title, 'hi'), seg(media.artist ? ` — ${media.artist}` : '', 'dim')]);
+  }
+  L.push([]);
+  L.push([seg(prompt), seg(' '), ['', 'cursor']]);
+  return L;
+}
+
+function render() {
+  const out = $('out');
+  const frag = document.createDocumentFragment();
+  lines().forEach((line, i) => {
+    if (i) frag.append('\n');
+    for (const [text, cls] of line) {
+      if (cls === 'cursor') { const c = document.createElement('span'); c.className = 'cursor'; frag.append(c); continue; }
+      if (!cls) { frag.append(text); continue; }
+      const sp = document.createElement('span'); sp.className = cls; sp.textContent = text; frag.append(sp);
+    }
   });
-  card('ssdCard', `${sys.model || 'STORAGE'}${sys.letters ? ' · ' + sys.letters : ''}`, [
-    gauge('ACTIVE', sys.active, pct(sys.active), 100, 70, 95),
-    gauge('TEMP', sys.temp, tC(sys.temp), 85, o.ssdTempMax - 10, o.ssdTempMax),
-  ], H.ssd, H.ssdT, [
-    ['READ', rate(sys.read)],
-    ['WRITE', rate(sys.write)],
-    [`${vol ? String(vol.mount).replace(/\\$/, '') : 'DISK'} USED`, vol ? `${bytes(vol.used)} / ${bytes(vol.total)}` : '—'],
-  ], [dbar, ...others]);
-
-  // Top 5 processes
-  const procs = (s.processes || []).slice(0, 5);
-  const maxCpu = Math.max(1, ...procs.map((p) => p.cpu));
-  $('procs').replaceChildren(...procs.map((p, i) => {
-    const tr = el('tr');
-    const n = el('td', 'n'); n.append(el('span', 'rank', `${i + 1}`), p.name + (p.count > 1 ? ` ×${p.count}` : ''));
-    const pb = el('div', 'pb'); const pi = el('i'); pi.style.width = `${(p.cpu / maxCpu) * 100}%`; pb.append(pi); n.append(pb);
-    const c = el('td', 'r', `${p.cpu.toFixed(1)}%`); level(c, p.cpu, 40, 80);
-    tr.append(n, c, el('td', 'r k', bytes(p.memory)));
-    return tr;
-  }));
-
-  // Network + fans
-  $('rx').textContent = rate(s.net?.rx); $('tx').textContent = rate(s.net?.tx);
-  const peak = Math.max(...H.rx.filter(Boolean), 0);
-  $('netPeak').textContent = peak ? `PEAK ${rate(peak)}` : '';
-  graph($('netGraph'), H.rx, H.tx, Math.max(1, ...H.rx.filter(Boolean), ...H.tx.filter(Boolean)), Math.max(1, ...H.rx.filter(Boolean), ...H.tx.filter(Boolean)));
-  const fans = s.fans || [];
-  $('fans').replaceChildren(...(fans.length ? fans.slice(0, 4).flatMap((f) => [el('dt', 'k', String(f.label).toUpperCase().slice(0, 18)), el('dd', null, `${f.rpm} RPM`)])
-    : [el('dt', 'k', 'FANS'), el('dd', 'k', g.fan ? `GPU ${g.fan} RPM` : 'advanced sensors')]));
-
-  for (const c of ['cpuCard', 'gpuCard', 'ramCard', 'ssdCard']) $(c).querySelectorAll('canvas').forEach(() => {});
-
-  alertOnce('cpu temp', s.cpuTemp != null && s.cpuTemp >= o.cpuTempMax, `ALERT CPU ${tC(s.cpuTemp)}`);
-  alertOnce('gpu temp', g.temp != null && g.temp >= o.gpuTempMax, `ALERT GPU ${tC(g.temp)}`);
-  alertOnce('ssd temp', sys.temp != null && sys.temp >= o.ssdTempMax, `ALERT SSD ${tC(sys.temp)}`);
-  alertOnce('cpu load', s.cpu >= o.loadMax, `CPU LOAD ${pct(s.cpu)} — TOP: ${procs[0]?.name || '?'}`);
-  alertOnce('memory', s.memory >= 92, `MEMORY PRESSURE ${pct(s.memory)}`);
+  out.replaceChildren(frag);
+  fit();
 }
 
-// ---------------------------------------------------------------- render: weather
-function renderWeather() {
-  if (!w || !o.showWeather) return;
-  const [uvT, uvC] = uvInfo(w.uv);
-  const [aqT, aqC] = aqiInfo(w.air?.aqi);
-  const now = $('now');
-  now.innerHTML = wxIcon(w.condition, w.isDay);
-  const mid = el('div');
-  const t = el('div', 'temp', `${Math.round(w.temperature)}${w.units || '°'}`);
-  mid.append(t, el('div', 'cond', `${String(w.description || '').toUpperCase()} · ${String(w.location || '').split(',')[0].toUpperCase()}`),
-    el('div', 'k', `FEELS ${wt(w.feelsLike)} · H ${wt(w.high)} L ${wt(w.low)}`));
-  const facts = el('div', 'facts');
-  const badge = (txt, col) => { const b = el('span', 'badge', txt); b.style.background = col; return b; };
-  const uvd = el('span'); uvd.append(badge(`UV ${w.uv != null ? Math.round(w.uv) : '—'}`, uvC), ' ', uvT);
-  const aqd = el('span'); aqd.append(badge(`AQI ${w.air?.aqi != null ? Math.round(w.air.aqi) : '—'}`, aqC), ' ', aqT);
-  facts.append(uvd, aqd,
-    el('span', null, `HUM ${pct(w.humidity)}`), el('span', null, `WIND ${w.wind != null ? Math.round(w.wind) : '—'} ${w.windUnits || ''}`),
-    el('span', null, `RAIN ${pct(w.rainChance)}`), el('span', null, `${w.pressure != null ? Math.round(w.pressure) : '—'} hPa`),
-    el('span', 'k', `PM2.5 ${w.air?.pm25 != null ? Math.round(w.air.pm25) : '—'}`), el('span', 'k', `UV MAX ${w.uvMax != null ? Math.round(w.uvMax) : '—'}`));
-  now.append(mid, facts);
-
-  // 4 days
-  const days = w.days || [];
-  $('days').replaceChildren(...days.slice(0, 4).map((d, i) => {
-    const box = el('div', 'day' + (i === 0 ? ' today' : ''));
-    const name = i === 0 ? 'TODAY' : new Date(d.date + 'T12:00').toLocaleDateString(lang, { weekday: 'short' }).toUpperCase();
-    box.append(el('div', 'dn', name));
-    box.insertAdjacentHTML('beforeend', wxIcon(d.condition, true));
-    const mm = el('div', 'mm'); mm.append(`${wt(d.max)} `, el('span', null, wt(d.min))); box.append(mm);
-    const [dUv, dUvC] = uvInfo(d.uvMax);
-    const sub = el('div', 'sub'); sub.append(`RAIN ${pct(d.rainChance)} · `);
-    const b = el('span', 'badge', `UV ${d.uvMax != null ? Math.round(d.uvMax) : '—'}`); b.style.background = dUvC; b.style.fontSize = '0.85em'; b.title = dUv;
-    sub.append(b); box.append(sub);
-    box.append(el('div', 'sub', String(d.description || '').toUpperCase()));
-    return box;
-  }));
-
-  // 24h chart
-  const hours = w.hours || [];
-  const temps = hours.map((h) => h.temp);
-  const rains = hours.map((h) => h.rainChance);
-  const lo = Math.min(...temps), hi = Math.max(...temps);
-  const c = $('hourGraph');
-  if (c.offsetWidth && temps.length > 1) {
-    const W = c.width = c.offsetWidth * devicePixelRatio, Hh = c.height = c.offsetHeight * devicePixelRatio;
-    const g = c.getContext('2d');
-    rains.forEach((r, i) => { if (!r) return; g.fillStyle = css('--hi2') + '55'; const bw = W / rains.length; g.fillRect(i * bw + 1, Hh - (r / 100) * Hh, bw - 2, (r / 100) * Hh); });
-    g.beginPath();
-    temps.forEach((v, i) => { const x = (i / (temps.length - 1)) * W, y = Hh - ((v - lo) / Math.max(1, hi - lo)) * (Hh - 14 * devicePixelRatio) - 7 * devicePixelRatio; i ? g.lineTo(x, y) : g.moveTo(x, y); });
-    g.strokeStyle = css('--hi'); g.lineWidth = 2 * devicePixelRatio; g.stroke();
-    g.fillStyle = css('--dim'); g.font = `${10 * devicePixelRatio}px monospace`;
-    [0, 6, 12, 18].forEach((i) => { if (!hours[i]) return; g.fillText(hhmm(hours[i].time), (i / (temps.length - 1)) * W + 3, 11 * devicePixelRatio); });
-  }
-  $('hourRange').textContent = temps.length ? `${wt(lo)} → ${wt(hi)}` : '';
-
-  // Sun & moon
-  const today = days[0] || {};
-  const sr = today.sunrise ? new Date(today.sunrise) : null, ss = today.sunset ? new Date(today.sunset) : null;
-  const nowD = new Date();
-  let daylight = '—';
-  if (sr && ss) {
-    const left = (ss - nowD) / 60000;
-    daylight = nowD < sr ? 'BEFORE SUNRISE' : left > 0 ? `${Math.floor(left / 60)}h ${Math.round(left % 60)}m OF LIGHT LEFT` : 'AFTER SUNSET';
-  }
-  const m = moonPhase(nowD);
-  $('sun').innerHTML = '';
-  const add = (k, v) => { const sp = el('span'); sp.append(el('span', 'k', k + ' '), el('b', null, v)); $('sun').append(sp); };
-  add('SUNRISE', hhmm(today.sunrise)); add('SUNSET', hhmm(today.sunset)); add('', daylight);
-  const ms = el('span'); ms.innerHTML = moonSvg(m.age); ms.append(` ${m.name} ${m.illum}%`); $('sun').append(ms);
+// Font size: the widest line must fit the window width, and every line must fit the screen height.
+function fit() {
+  const win = $('win');
+  const width = win.clientWidth;
+  const count = $('out').textContent.split('\n').length + (o.titleBar ? 2 : 0) + 1;
+  const byWidth = (width - 24) / (COLS * 0.6);
+  const byHeight = (innerHeight * 0.93) / (count * 1.32);
+  const size = Math.max(7, Math.min(byWidth * (o.fontSize || 1), byHeight));
+  document.documentElement.style.setProperty('--fs', `${size.toFixed(2)}px`);
 }
 
-// ---------------------------------------------------------------- clock
-function weekNumber(d) {
-  const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
-  const day = t.getUTCDay() || 7; t.setUTCDate(t.getUTCDate() + 4 - day);
-  return Math.ceil(((t - new Date(Date.UTC(t.getUTCFullYear(), 0, 1))) / 86400000 + 1) / 7);
-}
-function tickClock() {
-  const d = new Date();
-  const hh = d.getHours(), h12 = ((hh + 11) % 12) + 1;
-  const h = o.format24 === false ? String(h12) : String(hh).padStart(2, '0');
-  $('time').innerHTML = '';
-  $('time').append(`${h}:${String(d.getMinutes()).padStart(2, '0')}`, el('small', null, `:${String(d.getSeconds()).padStart(2, '0')}${o.format24 === false ? (hh < 12 ? ' AM' : ' PM') : ''}`));
-  $('date').textContent = d.toLocaleDateString(lang, { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }).toUpperCase();
-  const dayP = ((d.getHours() * 60 + d.getMinutes()) / 1440) * 100;
-  const start = new Date(d.getFullYear(), 0, 1), end = new Date(d.getFullYear() + 1, 0, 1);
-  const yearP = ((d - start) / (end - start)) * 100;
-  $('progress').innerHTML = '';
-  for (const [k, v] of [['WEEK', String(weekNumber(d))], ['DAY', `${dayP.toFixed(0)}%`], ['YEAR', `${yearP.toFixed(1)}%`]]) {
-    const sp = el('span'); sp.append(`${k} `, el('b', null, v)); $('progress').append(sp);
-  }
-}
-
-// ---------------------------------------------------------------- look & boot
 function applyLook() {
-  document.body.className = [o.theme || 'wallgates', o.aberration ? 'aberration' : '', o.flicker ? 'flicker' : '', Wallgates.paused ? 'paused' : ''].join(' ');
-  const st = document.documentElement.style;
-  st.setProperty('--fs', o.fontSize ?? 1); st.setProperty('--glow', o.glow ?? 0.55); st.setProperty('--scan', o.scanlines ?? 0.35);
-  st.setProperty('--noise', o.noise ?? 0.05); st.setProperty('--vig', o.vignette ?? 0.55);
-  $('procPanel').classList.toggle('hidden', !o.showProcs);
-  $('netPanel').classList.toggle('hidden', !o.showNet);
-  $('forecast').classList.toggle('hidden', !o.showWeather);
-  $('now').classList.toggle('hidden', !o.showWeather);
-  $('media').classList.toggle('hidden', !o.showMedia);
-  $('meter').classList.toggle('hidden', !o.showAudio);
-  $('log').classList.toggle('hidden', !o.showLog);
-  $('miniLogo').classList.toggle('hidden', !o.showLogo);
-  tickClock(); renderHardware(); renderWeather();
+  const cls = [o.theme || 'cmd', `pos-${o.position || 'right'}`, `bg-${o.background || 'black'}`];
+  if (Wallgates.paused) cls.push('paused');
+  document.body.className = cls.join(' ');
+  document.documentElement.style.setProperty('--w', `${o.width || 42}vw`);
+  document.documentElement.style.setProperty('--op', o.opacity ?? 0.94);
+  $('title').style.display = o.titleBar === false ? 'none' : 'flex';
+  render();
 }
 
-async function bootSequence() {
-  const box = $('boot');
-  if (!o.boot) { box.remove(); booted = true; return; }
-  const pre = el('pre'); pre.textContent = LOGO; pre.style.fontSize = '1.9em';
-  const text = el('div'); text.style.marginTop = '2vw';
-  box.append(pre, text);
-  const steps = ['WALLGATES OS · LIVE WALLPAPER KERNEL', 'OPENING GATE ................. OK', 'ATTACHING TO DESKTOP ......... OK',
-    'PROBING CPU / GPU / RAM / SSD . OK', 'LINKING WEATHER SATELLITES ... OK', 'LINK ESTABLISHED. WELCOME, ' + String(o.operator || 'OPERATOR').toUpperCase() + '.'];
-  for (const line of steps) { text.textContent += line + '\n'; await new Promise((r) => setTimeout(r, 360)); }
+async function typeCommand() {
+  const cmd = 'wallgates status --live';
+  $('titleText').textContent = `C:\\WINDOWS\\system32\\cmd.exe - ${cmd}`;
+  if (!o.typing) { typed = cmd; typingDone = true; render(); return; }
   await new Promise((r) => setTimeout(r, 600));
-  box.style.transition = 'opacity .6s'; box.style.opacity = '0';
-  setTimeout(() => { box.remove(); renderHardware(); renderWeather(); }, 650);
-  booted = true;
+  for (const ch of cmd) { typed += ch; render(); await new Promise((r) => setTimeout(r, 55 + Math.random() * 60)); }
+  await new Promise((r) => setTimeout(r, 350));
+  typingDone = true;
+  render();
 }
 
-const nc = $('noise'), nx = nc.getContext('2d');
-nc.width = 160; nc.height = 90;
-function noise() {
-  if (!Wallgates.paused && (o.noise ?? 0.05) > 0) {
-    const img = nx.createImageData(160, 90);
-    for (let i = 0; i < img.data.length; i += 4) { const v = Math.random() * 255; img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
-    nx.putImageData(img, 0, 0);
-  }
-  setTimeout(noise, 85);
-}
-
-// ---------------------------------------------------------------- data
 let started = false;
-Wallgates.on('properties', (v) => {
-  o = v; applyLook();
-  if (!started) { started = true; $('miniLogo').textContent = LOGO; log('WALLGATES SYSTEM MONITOR ONLINE'); bootSequence(); }
-});
+Wallgates.on('properties', (v) => { o = v; applyLook(); if (!started) { started = true; typeCommand(); } });
 Wallgates.on('pause', () => applyLook());
 Wallgates.on('system', (d) => {
-  const first = !s; s = d;
+  s = d;
   const sys = (d.drives || []).find((x) => /C:/i.test(x.letters || '')) || (d.drives || [])[0] || {};
-  push(H.cpu, d.cpu); push(H.cpuT, d.cpuTemp); push(H.gpu, d.gpu?.usage); push(H.gpuT, d.gpu?.temp);
-  push(H.ram, d.memory); push(H.ramT, d.ramTemp); push(H.ssd, sys.active); push(H.ssdT, sys.temp);
-  push(H.rx, d.net?.rx); push(H.tx, d.net?.tx);
-  if (first) {
-    log(`HOST ${d.host || '?'} · ${(d.cores || []).length} THREADS · ${bytes(d.memoryTotal)} RAM`);
-    if (!['hwinfo', 'wallgates-sensors'].includes(d.sources?.temperatures)) log('TIP: Wallgates → Settings → Advanced sensors adds CPU/RAM temperatures and fans', 'warn');
-    else log('SENSORS: HWiNFO shared memory connected');
-    if (d.sources?.temperatures === 'wallgates-sensors') log('SENSORS: Wallgates advanced sensors online');
-  }
-  if (!Wallgates.paused) renderHardware();
+  push(hist.cpu, d.cpu); push(hist.gpu, d.gpu?.usage); push(hist.ram, d.memory); push(hist.ssd, sys.active);
+  if (!Wallgates.paused && typingDone) render();
 });
-Wallgates.on('weather', (d) => { const first = !w; w = d; if (first) log(`WEATHER LINK: ${String(d.location || '').toUpperCase()}`); renderWeather(); });
-Wallgates.on('media', (m) => {
-  $('track').textContent = m.title ? String(m.title).toUpperCase() : 'NOTHING PLAYING';
-  $('artist').textContent = m.title ? `${m.playing ? '▶' : '❚❚'} ${m.artist || ''}` : '♪ play something on Spotify, YouTube…';
-  $('art').style.backgroundImage = m.thumbnail ? `url("${m.thumbnail}")` : '';
-});
-Wallgates.on('audio', ({ bands }) => {
-  if (!o.showAudio || Wallgates.paused) return;
-  const m = $('meter');
-  if (m.children.length !== 48) m.replaceChildren(...Array.from({ length: 48 }, () => el('i')));
-  for (let i = 0; i < 48; i++) m.children[i].style.height = `${Math.max(3, (bands[Math.floor(i * 64 / 48)] || 0) * 100)}%`;
-});
-setInterval(() => { if (!Wallgates.paused) tickClock(); }, 1000);
-setInterval(() => { if (!Wallgates.paused) renderWeather(); }, 60000);
-tickClock(); noise();
+Wallgates.on('weather', (d) => { w = d; if (typingDone) render(); });
+Wallgates.on('media', (m) => { media = m; if (typingDone) render(); });
+setInterval(() => { if (!Wallgates.paused && typingDone) render(); }, 1000);
+addEventListener('resize', fit);
 </script>
 </body>
 </html>

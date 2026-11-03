@@ -1,12 +1,12 @@
 {
   "name": "System Terminal",
   "author": "Wallgates",
-  "description": "Every nerd stat on a retro CRT terminal: CPU, GPU, RAM and SSD with load, temperature and history; top 5 processes; network and fans; the time; weather with UV, air quality and a 3-day forecast; sunrise, sunset and moon; now playing. Boots with the Wallgates gate.",
+  "description": "A clean command-prompt window with every nerd stat: CPU, GPU, RAM and SSD load and temperatures, top processes, network, fans, weather with UV and a 3-day forecast, sun and moon. Sits where you want it, without taking the whole screen.",
   "type": "html",
   "entry": "index.html",
   "preview": "preview.jpg",
   "license": "CC-BY-4.0",
-  "version": "2.1.0",
+  "version": "3.0.0",
   "tags": [
     "system",
     "monitor",
@@ -18,53 +18,135 @@
   ],
   "capabilities": [
     "system",
-    "audio",
     "weather",
     "media"
   ],
   "properties": {
     "g1": {
-      "label": "Display",
+      "label": "Window",
       "type": "group"
     },
     "theme": {
       "label": "Theme",
       "type": "select",
-      "default": "wallgates",
+      "default": "cmd",
       "options": [
         {
+          "value": "cmd",
+          "label": "Command Prompt (grey on black)"
+        },
+        {
+          "value": "powershell",
+          "label": "PowerShell (blue)"
+        },
+        {
           "value": "wallgates",
-          "label": "Wallgates neon"
-        },
-        {
-          "value": "mono",
-          "label": "Monochrome"
-        },
-        {
-          "value": "amber",
-          "label": "Amber CRT"
+          "label": "Wallgates (cyan / violet)"
         },
         {
           "value": "green",
           "label": "Green phosphor"
+        },
+        {
+          "value": "amber",
+          "label": "Amber"
         }
       ]
     },
-    "operator": {
-      "label": "Operator name",
-      "type": "text",
-      "default": "OPERATOR"
+    "position": {
+      "label": "Position",
+      "type": "select",
+      "default": "right",
+      "options": [
+        {
+          "value": "right",
+          "label": "Right"
+        },
+        {
+          "value": "left",
+          "label": "Left"
+        },
+        {
+          "value": "center",
+          "label": "Center"
+        },
+        {
+          "value": "top-right",
+          "label": "Top right"
+        },
+        {
+          "value": "top-left",
+          "label": "Top left"
+        },
+        {
+          "value": "bottom-right",
+          "label": "Bottom right"
+        },
+        {
+          "value": "bottom-left",
+          "label": "Bottom left"
+        }
+      ]
+    },
+    "width": {
+      "label": "Window width (% of screen)",
+      "type": "slider",
+      "min": 28,
+      "max": 80,
+      "step": 1,
+      "default": 42
     },
     "fontSize": {
       "label": "Text size",
       "type": "slider",
-      "min": 0.6,
-      "max": 1.6,
+      "min": 0.7,
+      "max": 1.5,
       "step": 0.05,
       "default": 1
     },
-    "boot": {
-      "label": "Boot sequence on start",
+    "opacity": {
+      "label": "Window opacity",
+      "type": "slider",
+      "min": 0.5,
+      "max": 1,
+      "step": 0.05,
+      "default": 0.94
+    },
+    "titleBar": {
+      "label": "Window title bar",
+      "type": "bool",
+      "default": true
+    },
+    "background": {
+      "label": "Desktop background",
+      "type": "select",
+      "default": "black",
+      "options": [
+        {
+          "value": "black",
+          "label": "Black"
+        },
+        {
+          "value": "graphite",
+          "label": "Graphite"
+        },
+        {
+          "value": "navy",
+          "label": "Deep navy"
+        },
+        {
+          "value": "wallgates",
+          "label": "Wallgates dark gradient"
+        }
+      ]
+    },
+    "operator": {
+      "label": "User name in the prompt",
+      "type": "text",
+      "default": "Operator"
+    },
+    "typing": {
+      "label": "Type the command on start",
       "type": "bool",
       "default": true
     },
@@ -79,13 +161,8 @@
       "default": false
     },
     "g2": {
-      "label": "Panels",
+      "label": "Sections",
       "type": "group"
-    },
-    "showWeather": {
-      "label": "Weather & forecast",
-      "type": "bool",
-      "default": true
     },
     "showProcs": {
       "label": "Top processes",
@@ -97,32 +174,37 @@
       "type": "bool",
       "default": true
     },
+    "showWeather": {
+      "label": "Weather & forecast",
+      "type": "bool",
+      "default": true
+    },
+    "showSun": {
+      "label": "Sun & moon",
+      "type": "bool",
+      "default": true
+    },
     "showMedia": {
       "label": "Now playing",
       "type": "bool",
       "default": true
     },
-    "showAudio": {
-      "label": "Audio spectrum",
-      "type": "bool",
-      "default": true
-    },
-    "showLog": {
-      "label": "System log",
+    "showHistory": {
+      "label": "Load history (text sparklines)",
       "type": "bool",
       "default": true
     },
     "showLogo": {
-      "label": "ASCII logo",
+      "label": "Wallgates ASCII logo",
       "type": "bool",
-      "default": true
+      "default": false
     },
     "n0": {
-      "label": "Weather needs Wallgates → Settings → Weather & location: turn it on and pick your city.",
+      "label": "Weather: Wallgates → Settings → Weather & location. CPU/RAM temperatures and fans: Settings → Advanced sensors.",
       "type": "note"
     },
     "g3": {
-      "label": "Alerts",
+      "label": "Alerts (highlighted in red)",
       "type": "group"
     },
     "cpuTempMax": {
@@ -156,56 +238,6 @@
       "max": 100,
       "step": 1,
       "default": 92
-    },
-    "n1": {
-      "label": "CPU and RAM temperatures and fans on Windows: turn on Wallgates → Settings → Advanced sensors (one click). GPU and SSD temperatures work out of the box.",
-      "type": "note"
-    },
-    "g4": {
-      "label": "CRT effects",
-      "type": "group"
-    },
-    "scanlines": {
-      "label": "Scanlines",
-      "type": "slider",
-      "min": 0,
-      "max": 1,
-      "step": 0.05,
-      "default": 0.35
-    },
-    "noise": {
-      "label": "Noise",
-      "type": "slider",
-      "min": 0,
-      "max": 0.5,
-      "step": 0.01,
-      "default": 0.05
-    },
-    "glow": {
-      "label": "Glow",
-      "type": "slider",
-      "min": 0,
-      "max": 1,
-      "step": 0.05,
-      "default": 0.55
-    },
-    "aberration": {
-      "label": "Chromatic aberration",
-      "type": "bool",
-      "default": true
-    },
-    "vignette": {
-      "label": "Vignette",
-      "type": "slider",
-      "min": 0,
-      "max": 1,
-      "step": 0.05,
-      "default": 0.55
-    },
-    "flicker": {
-      "label": "Flicker",
-      "type": "bool",
-      "default": false
     }
   }
 }
