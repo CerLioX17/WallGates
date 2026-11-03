@@ -4,7 +4,7 @@
   'use strict';
   const $ = (id) => document.getElementById(id);
   const lang = navigator.language || 'it-IT';
-  let o = {}, mk = null, book = null, csvSeen = null;
+  let o = {}, mk = null, book = null, csvSeen = null, compact = false;
   const DAY = 86400000;
 
   const PALETTES = {
@@ -118,7 +118,19 @@
     }
     return null;
   }
-  const priceNow = (p) => { const q = quoteOf(p.id); return q?.price != null ? q.price * fxTo(q.currency) : null; };
+  // Manual prices ("ISIN price" per line) win over feeds: for instruments without any public quote.
+  let overrides = {};
+  const parseOverrides = (txt) => Object.fromEntries(String(txt || '').split(/\r?\n/).map((l) => l.split('#')[0].trim().split(/[\s;=]+/))
+    .filter((a) => a.length >= 2 && isFinite(parseFloat(a[1].replace(',', '.')))).map((a) => [a[0].toUpperCase(), parseFloat(a[1].replace(',', '.'))]));
+  const missingFx = new Set();
+  const priceNow = (p) => {
+    if (overrides[p.isin] != null) return overrides[p.isin];
+    const q = quoteOf(p.id);
+    if (q?.price == null) return null;
+    const c = q.currency === 'GBp' ? 'GBP' : q.currency;
+    if (c && c !== cur() && !mk?.fx?.[`${c}${cur()}`]) missingFx.add(c);
+    return q.price * fxTo(q.currency);
+  };
   const sharesAt = (p, t) => p.trades.reduce((s, tr) => (tr.t <= t ? s + tr.shares : s), 0);
   const flowsBetween = (a, b) => book.flows.reduce((s, f) => (f.t > a && f.t <= b ? s + f.v : s), 0);
   const cashAt = (t) => book.rows.reduce((s, r) => (r.t <= t ? s + num(r.amount) + num(r.fee) + num(r.tax) : s), 0);
@@ -167,6 +179,9 @@
 
   // ------------------------------------------------------------ look
   function applyLook() {
+    compact = o.layout === 'compact';
+    document.body.classList.toggle('compact', compact);
+    overrides = parseOverrides(o.priceOverrides);
     const r = document.documentElement.style;
     const pal = o.palette === 'custom'
       ? { ...PALETTES.midnight, acc: o.accentColor, gain: o.gainColor, loss: o.lossColor, bg: o.bgColor, bg2: o.bgColor }
@@ -180,7 +195,7 @@
     document.body.classList.toggle('paused', !!Wallgates.paused);
     const show = (id, on) => $(id).classList.toggle('hidden', on === false);
     show('chartCard', o.showChart); show('allocCard', o.showAllocation); show('monthCard', o.showMonthly);
-    show('incomeCard', o.showIncome); show('activityCard', o.showActivity);
+    show('incomeCard', o.showIncome); show('activityCard', o.showActivity && !compact); show('tape', compact && o.showTape !== false);
     lastFit = '';
   }
 
@@ -212,26 +227,66 @@
     $('periods').innerHTML = P.map(([k, r, t0]) => `<div class="per ${cls(r.g)}"><span class="k">${k}</span><span class="v money">${smoney(r.g)}</span><span class="p">${spct(r.p)}</span>${t0 ? sparkSvg(series(Math.max(t0, book.first), 24)) : ''}</div>`).join('');
   }
 
-  function holdingsPanel() {
-    const open = Object.values(book.pos).filter((p) => p.shares > 1e-9);
-    const rows = open.map((p) => {
-      const q = quoteOf(p.id), px = priceNow(p), live = px != null;
+  function holdingRows() {
+    return Object.values(book.pos).filter((p) => p.shares > 1e-9).map((p) => {
+      const q = quoteOf(p.id), px = priceNow(p), manual = overrides[p.isin] != null;
       const value = p.shares * (px ?? p.lastPrice);
-      const day = q && q.previousClose ? ((q.price - q.previousClose) / q.previousClose) * 100 : null;
-      return { p, q, px: px ?? p.lastPrice, live, value, pl: value - p.cost, plp: p.cost ? ((value - p.cost) / p.cost) * 100 : null, day };
-    }).sort((a, b) => b.value - a.value);
+      const day = !manual && q && q.previousClose ? ((q.price - q.previousClose) / q.previousClose) * 100 : null;
+      const src = manual ? 'manual price' : q ? `${q.symbol || p.isin}${q.exchange ? ' · ' + q.exchange : ''}` : 'last trade price';
+      return { p, q, px: px ?? p.lastPrice, live: px != null, manual, value, pl: value - p.cost, plp: p.cost ? ((value - p.cost) / p.cost) * 100 : null, day, src };
+    }).sort((x, y) => y.value - x.value);
+  }
+
+  function holdingsPanel() {
+    const rows = holdingRows();
     const tot = rows.reduce((s, r) => s + r.value, 0) || 1;
     const closed = Object.values(book.pos).filter((p) => p.shares <= 1e-9 && Math.abs(p.realized) > 0.005);
     $('holdSub').textContent = `${rows.length} open · ${closed.length} closed`;
-    $('holdings').innerHTML = `<table><colgroup><col style="width:30%"><col style="width:9%"><col style="width:11%"><col style="width:13%"><col style="width:9%"><col style="width:15%"><col style="width:13%"></colgroup>
+    const flag = (r) => (r.manual ? '<span class="flag" title="Manual price">✎</span>' : r.live ? '' : '<span class="flag" title="No public quote: valued at the last trade price">◆</span>');
+    let html;
+    if (compact) {
+      html = `<table class="ctab"><colgroup><col style="width:44%"><col style="width:20%"><col style="width:14%"><col style="width:22%"></colgroup>
+        ${rows.map((r) => `<tr><td><span class="nm">${esc(r.p.name)}</span>${flag(r)}<div class="tk">${esc(r.src)} · ${nf(r.p.shares < 10 ? 3 : 2).format(r.p.shares)} × ${o.privacy ? '•••' : money(r.px)}</div></td>
+          <td class="money">${money(r.value)}<div class="tk">${nf(1).format((r.value / tot) * 100)}%</div></td>
+          <td class="${cls(r.day)}">${spct(r.day)}</td>
+          <td class="${cls(r.pl)}"><span class="money">${smoney(r.pl)}</span><div class="tk ${cls(r.pl)}">${spct(r.plp, 1)}</div></td></tr>`).join('')}
+        ${o.showClosed !== false ? closed.map((p) => `<tr class="closed"><td>${esc(p.name)}<div class="tk">closed position</div></td><td></td><td></td><td class="${cls(p.realized)}"><span class="money">${smoney(p.realized)}</span><div class="tk">realised</div></td></tr>`).join('') : ''}</table>`;
+      scrollInto('holdings', html, `<table class="ctab head"><colgroup><col style="width:44%"><col style="width:20%"><col style="width:14%"><col style="width:22%"></colgroup><tr><th>Instrument</th><th>Value</th><th>Today</th><th>Gain / loss</th></tr></table>`);
+    } else {
+      html = `<table><colgroup><col style="width:30%"><col style="width:9%"><col style="width:11%"><col style="width:13%"><col style="width:9%"><col style="width:15%"><col style="width:13%"></colgroup>
       <tr><th>Instrument</th><th>Shares</th><th>Price</th><th>Value</th><th>Today</th><th>Gain / loss</th><th>Weight</th></tr>
-      ${rows.map((r) => `<tr><td><span class="nm">${esc(r.p.name)}</span><span class="tk">${esc(r.q?.symbol || r.p.isin)}</span>${r.live ? '' : '<span class="flag" title="No public quote: valued at the last trade price">◆</span>'}</td>
+      ${rows.map((r) => `<tr><td><span class="nm">${esc(r.p.name)}</span><span class="tk">${esc(r.src)}</span>${flag(r)}</td>
         <td>${nf(r.p.shares < 10 ? 3 : 2).format(r.p.shares)}</td><td class="money">${money(r.px)}</td><td class="money">${money(r.value)}</td>
         <td class="${cls(r.day)}">${spct(r.day)}</td><td class="${cls(r.pl)}"><span class="money">${smoney(r.pl)}</span> <span class="mute">${spct(r.plp, 1)}</span></td>
         <td><span class="w" style="width:${Math.max(2, (r.value / tot) * 60).toFixed(1)}%"></span>${nf(1).format((r.value / tot) * 100)}%</td></tr>`).join('')}
       ${o.showClosed !== false ? closed.slice(-4).map((p) => `<tr class="closed"><td>${esc(p.name)} <span class="tk">closed</span></td><td></td><td></td><td></td><td></td><td class="${cls(p.realized)}"><span class="money">${smoney(p.realized)}</span> <span class="mute">realised</span></td><td></td></tr>`).join('') : ''}
       </table>`;
+      $('holdings').innerHTML = html;
+    }
     return rows;
+  }
+
+  // Auto-scrolling list: when the content is taller than its box it loops slowly upwards (no restart on updates).
+  function scrollInto(id, html, header = '') {
+    const host = $(id);
+    if (!host.querySelector('.scroller')) host.innerHTML = '<div class="shead"></div><div class="scroller"><div class="scroll-inner"></div></div>';
+    host.querySelector('.shead').innerHTML = header;
+    const box = host.querySelector('.scroller'), inner = box.querySelector('.scroll-inner');
+    inner.innerHTML = html;
+    const over = inner.scrollHeight > box.clientHeight + 4;
+    if (over) {
+      inner.innerHTML = html + '<div class="gap"></div>' + html;
+      inner.style.animationDuration = `${Math.max(20, inner.scrollHeight / 2 / 22)}s`;
+    }
+    inner.classList.toggle('loop', over);
+  }
+
+  // Bottom tape: every position with today's move, scrolling right to left.
+  function tapePanel(rows) {
+    const items = rows.map((r) => `<span class="ti"><b>${esc(r.p.name)}</b> <span class="money">${money(r.px)}</span> <span class="${cls(r.day)}">${r.day == null ? '' : (r.day > 0 ? '▲ ' : r.day < 0 ? '▼ ' : '') + spct(r.day)}</span></span>`).join('<span class="sep">│</span>');
+    const t = $('tapeInner');
+    const html = items + '<span class="sep">│</span>' + items + '<span class="sep">│</span>';
+    if (t.dataset.k !== html) { t.innerHTML = html; t.dataset.k = html; t.style.animationDuration = `${Math.max(40, rows.length * 7)}s`; }
   }
 
   function allocPanel(rows) {
@@ -320,9 +375,9 @@
     const mn = Math.min(...val, ...inv) * 0.97, mx = Math.max(...val, ...inv) * 1.02, rg = mx - mn || 1;
     const css = getComputedStyle(document.documentElement);
     const acc = css.getPropertyValue('--acc').trim(), acc2 = css.getPropertyValue('--acc2').trim(), line = css.getPropertyValue('--line').trim(), mute = css.getPropertyValue('--mute').trim();
-    const padL = 8, padR = 70, padT = 14, padB = 22;
+    const fsz = parseFloat(css.getPropertyValue("--fs")) || 14, padL = 8, padR = fsz * 5.6, padT = fsz, padB = fsz * 1.7;
     const X = (i) => padL + (i / N) * (W - padL - padR), Y = (v) => padT + (1 - (v - mn) / rg) * (H - padT - padB);
-    ctx.font = `11px ${css.getPropertyValue('--font')}, monospace`; ctx.fillStyle = mute; ctx.strokeStyle = line; ctx.lineWidth = 1;
+    ctx.font = `${Math.round(parseFloat(css.getPropertyValue("--fs")) * 0.74)}px ${css.getPropertyValue("--font")}, monospace`; ctx.fillStyle = mute; ctx.strokeStyle = line; ctx.lineWidth = 1;
     for (let k = 0; k <= 4; k++) {
       const v = mn + (rg * k) / 4, y = Y(v);
       ctx.beginPath(); ctx.moveTo(padL, y + 0.5); ctx.lineTo(W - padR, y + 0.5); ctx.stroke();
@@ -351,6 +406,7 @@
 
   // ------------------------------------------------------------ render
   function render() {
+    missingFx.clear();
     const now = new Date();
     $('clock').textContent = now.toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     if (!book || !book.rows.length) { document.body.classList.add('empty'); return; }
@@ -364,10 +420,11 @@
     if (o.showAllocation !== false) allocPanel(rows);
     if (o.showMonthly !== false) monthsPanel();
     if (o.showIncome !== false) incomePanel();
-    if (o.showActivity !== false) activityPanel();
-    const noQuote = Object.values(book.pos).filter((p) => p.shares > 1e-9 && !quoteOf(p.id)).length;
+    if (o.showActivity !== false && !compact) activityPanel();
+    if (compact) tapePanel(rows);
+    const noQuote = Object.values(book.pos).filter((p) => p.shares > 1e-9 && !quoteOf(p.id) && overrides[p.isin] == null).length;
     $('status').innerHTML = mk ? `<span class="dot open"></span>LIVE · ${qs.length} quotes` : '<span class="dot"></span>WAITING FOR PRICES…';
-    $('errs').textContent = noQuote ? `◆ ${noQuote} without public quote — valued at last trade price` : '';
+    $('errs').textContent = [noQuote ? `◆ ${noQuote} without public quote — valued at last trade price (add it under Manual prices)` : '', missingFx.size ? `FX rate missing for ${[...missingFx].join(', ')}` : ''].filter(Boolean).join(' · ');
     fit();
     if (o.showChart !== false) chartPanel();
   }
@@ -375,10 +432,10 @@
   let lastFit = '';
   function fit() {
     const size = Math.max(50, Math.min(100, o.size ?? 100)) / 100;
-    const key = `${innerWidth}x${innerHeight}|${size}|${o.textSize}|${o.font}`;
+    const key = `${innerWidth}x${innerHeight}|${size}|${o.textSize}|${o.font}|${compact}`;
     if (key === lastFit) return;
     lastFit = key;
-    let fs = Math.min(innerWidth * size / 1920, innerHeight * size / 1080) * 14 * (o.textSize || 1) * (o.font === 'vt323' ? 1.3 : 1);
+    let fs = Math.min(innerWidth * size / 1920, innerHeight * size / 1080) * (compact ? 19 : 14) * (o.textSize || 1) * (o.font === 'vt323' ? 1.3 : 1);
     const over = () => [...document.querySelectorAll('#app .card')].some((c) => c.scrollHeight > c.clientHeight + 2);
     for (let i = 0; i < 25; i++) {
       document.documentElement.style.setProperty('--fs', `${Math.max(7, fs).toFixed(2)}px`);

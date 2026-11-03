@@ -6,7 +6,7 @@
   "entry": "index.html",
   "preview": "preview.jpg",
   "license": "CC-BY-4.0",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "tags": [
     "finance",
     "portfolio",
@@ -33,6 +33,21 @@
     "n0": {
       "label": "Trade Republic app → Profile → Transactions → Export (CSV). The file is read on this PC and only ISINs are used to fetch prices: names, IBANs and amounts never leave your computer.",
       "type": "note"
+    },
+    "layout": {
+      "label": "Layout",
+      "type": "select",
+      "default": "extended",
+      "options": [
+        {
+          "value": "extended",
+          "label": "Extended — everything, for large screens"
+        },
+        {
+          "value": "compact",
+          "label": "Compact — bigger text, auto-scroll (24\" 1080p)"
+        }
+      ]
     },
     "market": {
       "label": "Price listing",
@@ -79,6 +94,13 @@
       "max": 600,
       "step": 10,
       "default": 60
+    },
+    "priceOverrides": {
+      "label": "Manual prices (one per line: ISIN price)",
+      "type": "textarea",
+      "rows": 3,
+      "default": "",
+      "placeholder": "DE000FD82214 1.62"
     },
     "chartRange": {
       "label": "Chart range",
@@ -280,8 +302,13 @@
       "type": "bool",
       "default": true
     },
+    "showTape": {
+      "label": "Ticker tape (compact layout)",
+      "type": "bool",
+      "default": true
+    },
     "n1": {
-      "label": "Prices: Yahoo Finance, delayed ~15 min, for information only. Instruments without a public quote (e.g. turbos/warrants) are valued at the last trade price.",
+      "label": "Prices: Yahoo Finance (delayed ~15 min), onvista for turbos/warrants/certificates, for information only. Trade Republic values at Lang & Schwarz prices, so small differences are normal, especially after 17:30 when Xetra is closed. If an instrument has no public quote, enter its price under Manual prices.",
       "type": "note"
     }
   }

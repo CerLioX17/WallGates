@@ -133,3 +133,54 @@ tr.closed td { color: var(--mute); }
 .ic { text-align: center; }
 
 .hidden { display: none !important; }
+
+/* ---------------------------------------------------------- tape & auto-scroll */
+.tape { display: none; grid-area: tape; height: 2.6em; padding: 0; grid-template-columns: 1fr; overflow: hidden; }
+.tape-inner { display: inline-flex; white-space: nowrap; align-items: center; height: 100%; animation: tape 60s linear infinite; will-change: transform; }
+.tape .ti { padding: 0 1.2em; } .tape .ti b { font-weight: 600; color: var(--fg); margin-right: 0.4em; }
+.tape .sep { color: var(--line2); }
+@keyframes tape { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.scroller { flex: 1; min-height: 0; overflow: hidden; position: relative;
+  mask-image: linear-gradient(180deg, transparent 0, black 1.2em, black calc(100% - 1.6em), transparent 100%); }
+.scroll-inner.loop { animation: vscroll 40s linear infinite; will-change: transform; }
+.scroll-inner .gap { height: 1.4em; }
+@keyframes vscroll { from { transform: translateY(0); } to { transform: translateY(-50%); } }
+body.paused .tape-inner, body.paused .scroll-inner.loop { animation-play-state: paused; }
+
+/* ---------------------------------------------------------- compact layout (readable on 24" 1080p) */
+body.compact #app {
+  grid-template-columns: minmax(0, 1.08fr) minmax(0, 0.92fr);
+  grid-template-rows: auto auto minmax(0, 1.15fr) minmax(0, 0.85fr) auto;
+  grid-template-areas: "head head" "hero hero" "chart hold" "side alloc" "tape tape";
+  gap: 0.6em; padding: 0.6em;
+}
+body.compact .foot { display: none; }
+body.compact .tape { display: grid; }
+body.compact .head { height: 3.3em; }
+body.compact .brand .tt { font-size: 1.25em; }
+body.compact .mkt { font-size: 0.85em; }
+body.compact .clock { font-size: 1.5em; }
+body.compact .hero { padding: 0.8em 1.1em; gap: 1.2em; }
+body.compact .hero-main { flex-basis: 27%; }
+body.compact .big { font-size: 2.5em; }
+body.compact .hero-kv { gap: 1em; font-size: 0.8em; }
+body.compact .per { padding: 0.6em 0.7em; }
+body.compact .per .v { font-size: 1.2em; }
+body.compact .per .k { font-size: 0.72em; }
+body.compact .per svg { display: none; }
+body.compact .holdings { display: flex; flex-direction: column; }
+body.compact #holdings { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ctab td { padding: 0.5em 0.4em; vertical-align: top; }
+.ctab td .tk { display: block; margin: 0.15em 0 0; font-size: 0.72em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ctab.head th { padding-bottom: 0.35em; }
+.ctab .nm { font-weight: 600; }
+body.compact .side { flex-direction: row; gap: 0.6em; }
+body.compact .side .card { flex: 1 1 0; min-width: 0; }
+body.compact .months { height: 5.6em; }
+body.compact .mb .val { display: none; }
+body.compact #years { margin-top: 1.8em; }
+body.compact .kv { padding: 0.32em 0.6em; margin: 0.25em 0; font-size: 0.92em; }
+body.compact .alloc-body { flex-direction: row; align-items: center; gap: 1em; }
+body.compact #donut { width: 7.5em; height: 7.5em; }
+body.compact #allocList { flex: 1; min-width: 0; }
+body.compact .legend { top: 2.7em; }

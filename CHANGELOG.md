@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.1
+**Trade Republic Portfolio 1.1**
+- New **Compact layout** (Customize → Layout): the same figures in larger type for 24" 1080p screens. Holdings
+  scroll automatically when the list is longer than the panel, a ticker tape shows each position's move
+  today, and Recent activity is removed.
+- More accurate values: instruments Yahoo Finance doesn't list (turbos, warrants, certificates) are now
+  priced through onvista instead of at the last trade price.
+- **Manual prices** (one per line: `ISIN price`) for any instrument without a public quote.
+- Every holding shows its price source (listing and exchange); a missing FX rate is reported in the
+  status bar instead of being silently treated as 1:1.
+- Chart labels scale with the text size.
+
 ## 0.9.0
 **New: Trade Republic Portfolio.**
 - Load the CSV export from the Trade Republic app (Customize → Trade Republic export → Choose file…).

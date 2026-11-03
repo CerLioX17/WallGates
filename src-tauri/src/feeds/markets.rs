@@ -228,6 +228,40 @@ pub struct Markets {
     history: HashMap<String, (std::time::Instant, Value)>,
 }
 
+/// First JSON object (depth-first) that has a numeric `last` field: onvista's quote block.
+fn find_quote(v: &Value) -> Option<&Map<String, Value>> {
+    match v {
+        Value::Object(m) => {
+            if m.get("last").and_then(Value::as_f64).is_some() {
+                return Some(m);
+            }
+            if let Some(q) = m.get("quote").and_then(find_quote) {
+                return Some(q);
+            }
+            m.values().find_map(find_quote)
+        }
+        Value::Array(a) => a.iter().find_map(find_quote),
+        _ => None,
+    }
+}
+
+/// Normalise an onvista snapshot into a quote (used for ISINs Yahoo doesn't list: turbos, warrants, certificates).
+pub fn parse_onvista(id: &str, snap: &Value) -> Option<Value> {
+    let q = find_quote(snap)?;
+    let price = q.get("last").and_then(Value::as_f64)?;
+    let prev = q.get("previousLast").or_else(|| q.get("previousClose")).and_then(Value::as_f64).unwrap_or(price);
+    let name = snap.pointer("/instrument/name").or_else(|| snap.get("name")).cloned().unwrap_or_else(|| json!(id));
+    let change = price - prev;
+    Some(json!({
+        "id": id, "symbol": id, "name": name,
+        "exchange": q.get("market").and_then(|m| m.get("name")).cloned().unwrap_or_else(|| json!("onvista")),
+        "currency": q.get("isoCurrency").and_then(Value::as_str).unwrap_or("EUR"),
+        "price": price, "previousClose": prev, "change": change,
+        "changePct": if prev != 0.0 { change / prev * 100.0 } else { 0.0 },
+        "time": q.get("datetimeLast"), "state": "closed", "spark": [], "source": "onvista",
+    }))
+}
+
 /// Daily closes from a Yahoo chart response, as `[[unix, close], ...]`.
 pub fn parse_history(chart: &Value) -> Value {
     let r = chart.pointer("/chart/result/0");
@@ -294,6 +328,36 @@ impl Markets {
             .map_err(|e| e.to_string())
     }
 
+    /// Fallback for instruments without a Yahoo listing, through onvista's public JSON API.
+    fn onvista(agent: &ureq::Agent, isin: &str) -> Result<Value, String> {
+        let search: Value = agent
+            .get("https://api.onvista.de/api/v1/instruments/search/facet")
+            .query("searchValue", isin)
+            .call()
+            .map_err(|e| e.to_string())?
+            .into_json()
+            .map_err(|e| e.to_string())?;
+        let hit = search
+            .pointer("/facets")
+            .and_then(Value::as_array)
+            .into_iter()
+            .flatten()
+            .filter_map(|f| f.get("results").and_then(Value::as_array))
+            .flatten()
+            .find(|r| r.get("isin").and_then(Value::as_str).map_or(true, |i| i.eq_ignore_ascii_case(isin)))
+            .ok_or_else(|| format!("{isin}: not found"))?;
+        let (Some(kind), Some(value)) = (hit.get("entityType").and_then(Value::as_str), hit.get("entityValue").and_then(Value::as_str)) else {
+            return Err(format!("{isin}: not found"));
+        };
+        let snap: Value = agent
+            .get(&format!("https://api.onvista.de/api/v1/instruments/{kind}/{value}/snapshot"))
+            .call()
+            .map_err(|e| e.to_string())?
+            .into_json()
+            .map_err(|e| e.to_string())?;
+        parse_onvista(isin, &snap).ok_or_else(|| format!("{isin}: no data"))
+    }
+
     fn daily(&mut self, agent: &ureq::Agent, symbol: &str) -> Value {
         if let Some((at, v)) = self.history.get(symbol) {
             if at.elapsed() < Duration::from_secs(3 * 3600) {
@@ -327,9 +391,10 @@ impl Markets {
                 let result = self
                     .resolve(&agent, id, &req.market)
                     .and_then(|sym| Self::chart(&agent, &sym))
-                    .and_then(|c| parse_chart(id, &c).ok_or_else(|| format!("{id}: no data")));
+                    .and_then(|c| parse_chart(id, &c).ok_or_else(|| format!("{id}: no data")))
+                    .or_else(|e| if is_isin(id) { Self::onvista(&agent, id).map_err(|_| e) } else { Err(e) });
                 let result = result.map(|mut q| {
-                    if req.history {
+                    if req.history && q.get("source").is_none() {
                         if let Some(sym) = q.get("symbol").and_then(Value::as_str).map(str::to_string) {
                             q["history"] = self.daily(&agent, &sym);
                         }
@@ -418,6 +483,19 @@ mod tests {
         assert!(r.history && r.ids.contains("XRP-EUR"));
         let h = parse_history(&json!({ "chart": { "result": [{ "timestamp": [1, 2, 3], "indicators": { "quote": [{ "close": [10.0, null, 12.5] }] } }] } }));
         assert_eq!(h, json!([[1, 10.0], [3, 12.5]]));
+    }
+
+    #[test]
+    fn parses_onvista_snapshot() {
+        let snap = json!({ "instrument": { "name": "Turbo Short Alibaba" },
+            "quote": { "last": 1.62, "previousLast": 1.8, "isoCurrency": "EUR", "market": { "name": "Lang & Schwarz" } } });
+        let q = parse_onvista("DE000FD82214", &snap).unwrap();
+        assert_eq!(q["price"], json!(1.62));
+        assert_eq!(q["exchange"], json!("Lang & Schwarz"));
+        assert!((q["changePct"].as_f64().unwrap() + 10.0).abs() < 1e-9);
+        let nested = json!({ "quoteList": { "list": [{ "last": 2.0, "isoCurrency": "EUR" }] } });
+        assert_eq!(parse_onvista("X", &nested).unwrap()["price"], json!(2.0));
+        assert!(parse_onvista("X", &json!({ "foo": 1 })).is_none());
     }
 
     #[test]
