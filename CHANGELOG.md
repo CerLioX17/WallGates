@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.10.0
+**New default wallpaper: Violet Flow.** A liquid violet marble photograph brought to life: the waves flow along
+their own lines (WebGL2 flow map), glowing contours drift across the surface, it follows the cursor and pulses with
+music. Speed, flow, waves, line glow and colour, hue, saturation, brightness, vignette, zoom, 30/60 fps and render
+resolution are all adjustable. New installs start with it.
+
+**Different wallpaper per display, made obvious.** The library now has a display picker (Display 1 · Display 2 ·
+All) that starts on your primary display instead of "All displays", every card shows which display it is on,
+and each click confirms where it was applied. If span mode is on, the library says so and offers a one-click switch
+back to per-display wallpapers.
+
+**Agent friendly.**
+- Built-in **MCP server**: `Wallgates --mcp`. Turn on Settings → *Agent access (MCP)*, add the shown command to
+  Claude Code / Cursor / Codex, and your agent can list wallpapers, set one per display, change options, duplicate
+  a built-in and edit its code live, pause, and read the authoring guide. Local only, token-protected, off by default.
+- `AGENTS.md` / `CLAUDE.md` guide for coding agents, `.mcp.json`, and `tools/preview/render.js`: a headless
+  renderer that shows any wallpaper with live mock data and reports its errors.
+
 ## 0.9.1
 **Trade Republic Portfolio 1.1**
 - New **Compact layout** (Customize → Layout): the same figures in larger type for 24" 1080p screens. Holdings

@@ -1,0 +1,169 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="/__wallgates/wallgates-sdk.js"></script>
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: #05010a; }
+  canvas { position: fixed; inset: 0; width: 100%; height: 100%; display: block; }
+  /* Fallback without WebGL2: the photo with a slow drift. */
+  #fallback { position: fixed; inset: -4%; background: url(flow.jpg) center / cover; animation: drift 40s ease-in-out infinite alternate; display: none; }
+  body.nogl #fallback { display: block; }
+  @keyframes drift { from { transform: scale(1.04) translate(0, 0); } to { transform: scale(1.1) translate(-1.5%, 1%); } }
+</style>
+</head>
+<body>
+<div id="fallback"></div>
+<canvas id="c"></canvas>
+<script>
+// Violet Flow — Wallgates built-in wallpaper. The photo flows along its own contour lines (two-phase flow map),
+// with soft travelling waves and crisp glowing isolines drawn on top so it stays sharp on 4K.
+const VERT = `#version 300 es
+in vec2 p; void main() { gl_Position = vec4(p, 0.0, 1.0); }`;
+const FRAG = `#version 300 es
+precision highp float;
+uniform sampler2D uTex;
+uniform vec2 uRes, uImg, uMouse;
+uniform float uTime, uSpeed, uFlow, uWaves, uLines, uDensity, uHue, uBright, uSat, uVig, uZoom, uAudio, uGlow;
+uniform vec3 uLineColor;
+out vec4 frag;
+
+float lum(vec3 c) { return dot(c, vec3(0.299, 0.587, 0.114)); }
+vec3 hue(vec3 c, float a) {            // rotate hue in YIQ space
+  const mat3 toY = mat3(0.299, 0.596, 0.211, 0.587, -0.274, -0.523, 0.114, -0.322, 0.312);
+  const mat3 toR = mat3(1.0, 1.0, 1.0, 0.956, -0.272, -1.106, 0.621, -0.647, 1.703);
+  vec3 y = toY * c; float h = atan(y.z, y.y) + a, ch = length(y.yz);
+  return toR * vec3(y.x, ch * cos(h), ch * sin(h));
+}
+vec2 hash(vec2 p) { p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3))); return fract(sin(p) * 43758.5453) * 2.0 - 1.0; }
+float noise(vec2 p) {
+  vec2 i = floor(p), f = fract(p), u = f * f * (3.0 - 2.0 * f);
+  return mix(mix(dot(hash(i), f), dot(hash(i + vec2(1, 0)), f - vec2(1, 0)), u.x),
+             mix(dot(hash(i + vec2(0, 1)), f - vec2(0, 1)), dot(hash(i + vec2(1, 1)), f - vec2(1, 1)), u.x), u.y);
+}
+// Direction of the marble's own lines: perpendicular to the gradient of the blurred image, plus a gentle curl.
+vec2 flowAt(vec2 uv, float t) {
+  float e = 0.03;
+  float lx = lum(textureLod(uTex, uv + vec2(e, 0), 6.0).rgb) - lum(textureLod(uTex, uv - vec2(e, 0), 6.0).rgb);
+  float ly = lum(textureLod(uTex, uv + vec2(0, e), 6.0).rgb) - lum(textureLod(uTex, uv - vec2(0, e), 6.0).rgb);
+  vec2 tang = vec2(-ly, lx);
+  tang /= length(tang) + 0.12;
+  vec2 q = uv * 0.9 + vec2(t * 0.6, -t * 0.4);
+  float n = 0.0008;
+  vec2 curl = vec2(noise(q + vec2(0, n)) - noise(q - vec2(0, n)), noise(q - vec2(n, 0)) - noise(q + vec2(n, 0))) / (2.0 * n);
+  return tang + curl * 0.08;
+}
+void main() {
+  // cover-fit the photo, with a little zoom so waves and parallax never show an edge
+  vec2 uv = gl_FragCoord.xy / uRes; uv.y = 1.0 - uv.y;
+  float ra = uRes.x / uRes.y, ia = uImg.x / uImg.y;
+  if (ra > ia) uv.y = (uv.y - 0.5) * ia / ra + 0.5; else uv.x = (uv.x - 0.5) * ra / ia + 0.5;
+  uv = (uv - 0.5) / uZoom + 0.5 + (uMouse - 0.5) * 0.012;
+
+  float t = uTime * uSpeed;
+  // slow travelling waves over the whole surface
+  uv += uWaves * 0.0042 * vec2(sin(uv.y * 4.5 + t * 0.35) + 0.5 * sin(uv.x * 7.0 - t * 0.23),
+                               cos(uv.x * 4.0 - t * 0.31) + 0.5 * cos(uv.y * 6.0 + t * 0.27));
+  // two-phase flow map: continuous motion along the contours without smearing
+  float cyc = t * 0.045, p0 = fract(cyc), p1 = fract(cyc + 0.5), w = abs(p0 - 0.5) * 2.0;
+  vec2 f = flowAt(uv, t * 0.02) * uFlow * (0.016 + 0.008 * uAudio);
+  vec3 c0 = texture(uTex, uv - f * p0).rgb, c1 = texture(uTex, uv - f * p1).rgb;
+  vec3 col = mix(c0, c1, w);
+
+  // crisp glowing isolines that travel slowly across the marble
+  float L = lum(textureLod(uTex, uv - f * mix(p0, p1, w), 3.0).rgb);
+  float v = L * uDensity - t * 0.06;
+  float d = abs(fract(v + 0.5) - 0.5), fw = max(fwidth(v), 1e-4);
+  float core = 1.0 - smoothstep(0.0, fw * 1.4, d);
+  float halo = exp(-d * d / (fw * fw * 40.0)) * 0.45;
+  float mask = smoothstep(0.12, 0.45, L) * (0.65 + 0.35 * sin(t * 0.21 + uv.x * 3.0 + uv.y * 2.0));
+  col += uLineColor * (core + halo * uGlow) * mask * uLines * (0.55 + 0.9 * uAudio);
+
+  col = hue(col, uHue);
+  float g = lum(col); col = mix(vec3(g), col, uSat);
+  col *= uBright;
+  vec2 q = gl_FragCoord.xy / uRes - 0.5;
+  col *= 1.0 - uVig * smoothstep(0.25, 0.85, length(q * vec2(ra / 1.6, 1.0)));
+  frag = vec4(col, 1.0);
+}`;
+
+const canvas = document.getElementById('c');
+const gl = canvas.getContext('webgl2', { antialias: false, alpha: false, preserveDrawingBuffer: true, powerPreference: 'low-power' });
+let o = {}, mouse = [0.5, 0.5], mouseT = [0.5, 0.5], level = 0, raf = 0, last = 0, clock = 0;
+
+function hex(c, d) { const m = /^#?([0-9a-f]{6})$/i.exec(c || ''); const n = parseInt(m ? m[1] : d, 16); return [(n >> 16 & 255) / 255, (n >> 8 & 255) / 255, (n & 255) / 255]; }
+
+if (!gl) {
+  document.body.classList.add('nogl');
+} else {
+  const sh = (type, src) => { const s = gl.createShader(type); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); return s; };
+  const prog = gl.createProgram();
+  gl.attachShader(prog, sh(gl.VERTEX_SHADER, VERT)); gl.attachShader(prog, sh(gl.FRAGMENT_SHADER, FRAG)); gl.linkProgram(prog);
+  gl.useProgram(prog);
+  const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW);
+  const loc = gl.getAttribLocation(prog, 'p'); gl.enableVertexAttribArray(loc); gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+  const U = {}; for (const n of ['uTex', 'uRes', 'uImg', 'uMouse', 'uTime', 'uSpeed', 'uFlow', 'uWaves', 'uLines', 'uDensity', 'uHue', 'uBright', 'uSat', 'uVig', 'uZoom', 'uAudio', 'uGlow', 'uLineColor']) U[n] = gl.getUniformLocation(prog, n);
+
+  const tex = gl.createTexture();
+  const img = new Image();
+  img.onload = () => {
+    gl.bindTexture(gl.TEXTURE_2D, tex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT);
+    const ext = gl.getExtension('EXT_texture_filter_anisotropic');
+    if (ext) gl.texParameterf(gl.TEXTURE_2D, ext.TEXTURE_MAX_ANISOTROPY_EXT, 4);
+    gl.uniform2f(U.uImg, img.width, img.height);
+    start();
+  };
+  img.crossOrigin = 'anonymous'; // the wallpaper runs in a sandboxed (opaque-origin) frame
+  img.src = 'flow.jpg';
+
+  function resize() {
+    const s = Math.max(0.25, Math.min(1, Wallgates.renderScale || 1)) * (o.quality ?? 1);
+    const w = Math.round(innerWidth * s), h = Math.round(innerHeight * s);
+    if (canvas.width !== w || canvas.height !== h) { canvas.width = w; canvas.height = h; gl.viewport(0, 0, w, h); }
+  }
+  function frame(now) {
+    raf = 0;
+    const fps = Number(o.fps) || 60;
+    if (now - last < 1000 / fps - 2) { raf = requestAnimationFrame(frame); return; }
+    const dt = Math.min(0.1, (now - last) / 1000 || 0); last = now;
+    clock += dt;
+    resize();
+    for (let i = 0; i < 2; i++) mouse[i] += (mouseT[i] - mouse[i]) * Math.min(1, dt * 2);
+    level *= Math.pow(0.04, dt);
+    gl.uniform1i(U.uTex, 0);
+    gl.uniform2f(U.uRes, canvas.width, canvas.height);
+    gl.uniform2f(U.uMouse, o.parallax === false ? 0.5 : mouse[0], o.parallax === false ? 0.5 : 1 - mouse[1]);
+    gl.uniform1f(U.uTime, clock);
+    gl.uniform1f(U.uSpeed, o.speed ?? 1);
+    gl.uniform1f(U.uFlow, o.flow ?? 1);
+    gl.uniform1f(U.uWaves, o.waves ?? 1);
+    gl.uniform1f(U.uLines, o.lines ?? 0.3);
+    gl.uniform1f(U.uDensity, o.density ?? 6);
+    gl.uniform1f(U.uGlow, o.glow ?? 1);
+    gl.uniform1f(U.uHue, ((o.hue ?? 0) * Math.PI) / 180);
+    gl.uniform1f(U.uBright, o.brightness ?? 1.05);
+    gl.uniform1f(U.uSat, o.saturation ?? 1.1);
+    gl.uniform1f(U.uVig, o.vignette ?? 0.35);
+    gl.uniform1f(U.uZoom, o.zoom ?? 1.08);
+    gl.uniform1f(U.uAudio, o.audio === false ? 0 : Math.min(1, level * (o.audioStrength ?? 1)));
+    gl.uniform3fv(U.uLineColor, hex(o.lineColor, 'ff3df2'));
+    gl.drawArrays(gl.TRIANGLES, 0, 3);
+    if (!Wallgates.paused) raf = requestAnimationFrame(frame);
+  }
+  function start() { if (!raf) { last = performance.now(); raf = requestAnimationFrame(frame); } }
+  Wallgates.on('pause', (p) => { if (!p) start(); });
+  Wallgates.on('properties', (v) => { o = v; start(); });
+  Wallgates.on('mouse', (m) => { if (m.inside !== false) mouseT = [m.x, m.y]; });
+  Wallgates.on('audio', (a) => { const bass = ((a.bands || []).slice(0, 8).reduce((s, x) => s + x, 0) / 8) || a.level || 0; level = Math.max(level, bass); });
+  addEventListener('resize', start);
+}
+</script>
+</body>
+</html>

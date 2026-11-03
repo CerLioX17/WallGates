@@ -44,6 +44,7 @@ Wallgates was designed from the most common complaints about existing wallpaper 
 - **Audio-reactive**: system audio spectrum (what you hear, not the microphone) for shaders and web wallpapers.
 - **Interactive**: cursor parallax, now playing (Spotify, browsers, any media app), weather (Open-Meteo, no key).
 - **Trade Republic Portfolio**: load your Trade Republic CSV export and see value, gain/loss today, this week, month, year to date, 1 year and all time, holdings, allocation, dividends and costs. The file never leaves your PC.
+- **Violet Flow** (default): a liquid violet marble that flows along its own lines, follows your cursor and pulses with your music.
 - **Market Terminal**: your ISIN watchlist and portfolio with live P/L, intraday charts, index tape and world market clocks.
 - **System Terminal**: CPU, GPU, RAM and SSD load and temperatures, top processes, network, fans and weather with UV and a 4-day forecast, as a full-screen monitoring workstation with a live event log (or a classic terminal window).
 - **Advanced sensors built in**: one click in Settings adds CPU/RAM temperatures and fans (LibreHardwareMonitor + PawnIO). Nothing else to install, and uninstalling Wallgates removes it too.
@@ -83,6 +84,21 @@ A wallpaper is a folder with a `wallpaper.json`:
 Or open **Create** in the app, pick a template and start typing: your desktop updates live.
 Full reference: **[docs/wallpaper-format.md](docs/wallpaper-format.md)**. The built-in wallpapers in
 [`wallpapers/`](wallpapers) and the gallery items in [`gallery/`](gallery) are working examples.
+
+## Use it with a coding agent (MCP)
+
+Wallgates is built to be changed by **coding agents** such as Claude Code, Cursor or Codex.
+
+- **Control and customise the running app**: Settings → **Agent access (MCP)** → *Allow coding agents*, then
+  ```bash
+  claude mcp add wallgates -- "C:\path\to\Wallgates.exe" --mcp
+  ```
+  (the settings page shows your exact command). Your agent can then list wallpapers, set one per display, change
+  any option, and copy a built-in wallpaper to edit its code live — e.g. *"put the System Terminal on display 1
+  with amber colours and add a GPU fan graph"*.
+- **Change Wallgates itself**: the repository has an [`AGENTS.md`](AGENTS.md) guide (layout, checks, rules) and a
+  headless preview tool, `node tools/preview/render.js <wallpaper>`, that renders any wallpaper with live mock data
+  and reports its errors.
 
 ## Build from source
 

@@ -1,0 +1,176 @@
+{
+  "name": "Violet Flow",
+  "author": "Wallgates",
+  "description": "The Wallgates signature wallpaper: a violet liquid-marble photograph brought to life. The waves flow along their own lines, glowing contours drift across the surface, and it gently follows your cursor and your music.",
+  "type": "html",
+  "entry": "index.html",
+  "preview": "preview.jpg",
+  "license": "CC-BY-4.0",
+  "version": "1.0.0",
+  "tags": [
+    "abstract",
+    "liquid",
+    "marble",
+    "violet",
+    "purple",
+    "flow",
+    "calm",
+    "signature"
+  ],
+  "capabilities": [
+    "audio",
+    "mouse"
+  ],
+  "properties": {
+    "g0": {
+      "label": "Motion",
+      "type": "group"
+    },
+    "speed": {
+      "label": "Speed",
+      "type": "slider",
+      "min": 0,
+      "max": 3,
+      "step": 0.05,
+      "default": 1
+    },
+    "flow": {
+      "label": "Flow along the lines",
+      "type": "slider",
+      "min": 0,
+      "max": 2.5,
+      "step": 0.05,
+      "default": 1
+    },
+    "waves": {
+      "label": "Waves",
+      "type": "slider",
+      "min": 0,
+      "max": 2.5,
+      "step": 0.05,
+      "default": 1
+    },
+    "parallax": {
+      "label": "Follow the cursor",
+      "type": "bool",
+      "default": true
+    },
+    "audio": {
+      "label": "React to music",
+      "type": "bool",
+      "default": true
+    },
+    "audioStrength": {
+      "label": "Music reaction",
+      "type": "slider",
+      "min": 0,
+      "max": 2,
+      "step": 0.05,
+      "default": 1
+    },
+    "g1": {
+      "label": "Glowing lines",
+      "type": "group"
+    },
+    "lines": {
+      "label": "Intensity",
+      "type": "slider",
+      "min": 0,
+      "max": 1.5,
+      "step": 0.05,
+      "default": 0.3
+    },
+    "density": {
+      "label": "Density",
+      "type": "slider",
+      "min": 3,
+      "max": 40,
+      "step": 1,
+      "default": 6
+    },
+    "glow": {
+      "label": "Glow",
+      "type": "slider",
+      "min": 0,
+      "max": 2,
+      "step": 0.05,
+      "default": 1
+    },
+    "lineColor": {
+      "label": "Colour",
+      "type": "color",
+      "default": "#ff3df2"
+    },
+    "g2": {
+      "label": "Colour",
+      "type": "group"
+    },
+    "hue": {
+      "label": "Hue shift (°)",
+      "type": "slider",
+      "min": -180,
+      "max": 180,
+      "step": 1,
+      "default": 0
+    },
+    "saturation": {
+      "label": "Saturation",
+      "type": "slider",
+      "min": 0,
+      "max": 2,
+      "step": 0.05,
+      "default": 1.1
+    },
+    "brightness": {
+      "label": "Brightness",
+      "type": "slider",
+      "min": 0.4,
+      "max": 1.8,
+      "step": 0.05,
+      "default": 1.05
+    },
+    "vignette": {
+      "label": "Vignette",
+      "type": "slider",
+      "min": 0,
+      "max": 1,
+      "step": 0.05,
+      "default": 0.35
+    },
+    "zoom": {
+      "label": "Zoom",
+      "type": "slider",
+      "min": 1,
+      "max": 1.8,
+      "step": 0.01,
+      "default": 1.08
+    },
+    "g3": {
+      "label": "Performance",
+      "type": "group"
+    },
+    "fps": {
+      "label": "Frame rate",
+      "type": "select",
+      "default": "60",
+      "options": [
+        {
+          "value": "30",
+          "label": "30 fps (lighter)"
+        },
+        {
+          "value": "60",
+          "label": "60 fps (smooth)"
+        }
+      ]
+    },
+    "quality": {
+      "label": "Render resolution",
+      "type": "slider",
+      "min": 0.5,
+      "max": 1,
+      "step": 0.05,
+      "default": 1
+    }
+  }
+}

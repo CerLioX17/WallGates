@@ -302,3 +302,5 @@ input[type=color] { width: 44px; height: 28px; border: 1px solid var(--border); 
   .library { grid-template-columns: 1fr; }
   .details { display: none; }
 }
+
+.agent-cmd { display: block; padding: 8px 10px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); font: 12px/1.5 "Cascadia Code", Consolas, ui-monospace, monospace; word-break: break-all; user-select: all; }

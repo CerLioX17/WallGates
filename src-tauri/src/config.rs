@@ -221,6 +221,8 @@ pub struct Config {
     pub transition_ms: u32,
     /// Show wallpapers rated "mature" in the library.
     pub show_mature: bool,
+    /// Let coding agents control Wallgates through MCP (local API on 127.0.0.1, token-protected).
+    pub agent_access: bool,
 
     /// v0.1 field, migrated into `default_source`.
     #[serde(skip_serializing)]
@@ -232,7 +234,7 @@ impl Default for Config {
         Self {
             version: CONFIG_VERSION,
             layout: LayoutMode::PerMonitor,
-            default_source: Some(Source::Wallpaper { id: "builtin/aurora".into() }),
+            default_source: Some(Source::Wallpaper { id: "builtin/violet-flow".into() }),
             monitors: HashMap::new(),
             properties: HashMap::new(),
             playlists: Vec::new(),
@@ -249,6 +251,7 @@ impl Default for Config {
             favorites: Vec::new(),
             transition_ms: 900,
             show_mature: false,
+            agent_access: false,
             active: None,
         }
     }
@@ -333,7 +336,7 @@ impl Config {
         self.favorites.retain(|f| f != id);
         let gone = |s: &Source| matches!(s, Source::Wallpaper { id: w } if w == id);
         if self.default_source.as_ref().is_some_and(gone) {
-            self.default_source = Some(Source::Wallpaper { id: "builtin/aurora".into() });
+            self.default_source = Some(Source::Wallpaper { id: "builtin/violet-flow".into() });
         }
         self.monitors.retain(|_, s| !gone(s));
         for pl in &mut self.playlists {
@@ -389,6 +392,6 @@ mod tests {
         cfg.forget_wallpaper("user/a");
         assert!(cfg.monitors.is_empty());
         assert!(cfg.playlists[0].items.is_empty());
-        assert_eq!(cfg.default_source, Some(Source::Wallpaper { id: "builtin/aurora".into() }));
+        assert_eq!(cfg.default_source, Some(Source::Wallpaper { id: "builtin/violet-flow".into() }));
     }
 }

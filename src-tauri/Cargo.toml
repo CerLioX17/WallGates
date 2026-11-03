@@ -1,6 +1,6 @@
 [package]
 name = "wallgates"
-version = "0.9.1"
+version = "0.10.0"
 description = "Open-source, fully customizable live wallpaper engine"
 authors = ["Wallgates contributors"]
 license = "GPL-3.0-or-later"
@@ -30,6 +30,7 @@ sysinfo = { version = "0.35", default-features = false, features = ["system", "d
 base64 = "0.22"
 sys-locale = "0.3"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+tiny_http = "0.12"
 
 [target.'cfg(windows)'.dependencies]
 cpal = "0.15"

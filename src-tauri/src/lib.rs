@@ -1,5 +1,6 @@
 mod config;
 mod desktop;
+mod agent;
 mod engine;
 mod feeds;
 mod library;
@@ -196,7 +197,7 @@ fn delete_playlist(app: AppHandle, state: State<AppState>, id: String) -> Result
         let gone = |s: &Source| matches!(s, Source::Playlist { id: p } if *p == id);
         cfg.monitors.retain(|_, s| !gone(s));
         if cfg.default_source.as_ref().is_some_and(gone) {
-            cfg.default_source = Some(Source::Wallpaper { id: "builtin/aurora".into() });
+            cfg.default_source = Some(Source::Wallpaper { id: "builtin/violet-flow".into() });
         }
     })
 }
@@ -642,8 +643,127 @@ fn import_args(app: &AppHandle, args: Vec<String>) {
     });
 }
 
+// ---------------------------------------------------------------- agent access (MCP)
+
+fn display_target(app: &AppHandle, display: Option<&Value>) -> Result<String, String> {
+    let monitors = desktop::monitors(app);
+    match display {
+        None => Ok("default".into()),
+        Some(Value::String(s)) if s.eq_ignore_ascii_case("all") || s == "default" => Ok("default".into()),
+        Some(v) => {
+            let n = v.as_u64().or_else(|| v.as_str().and_then(|s| s.trim().parse().ok()));
+            match n {
+                Some(n) if n >= 1 && (n as usize) <= monitors.len() => Ok(monitors[n as usize - 1].id.clone()),
+                _ => match v.as_str().and_then(|s| monitors.iter().find(|m| m.id == s)) {
+                    Some(m) => Ok(m.id.clone()),
+                    None => Err(format!("unknown display {v}: there are {} display(s), numbered 1..{}", monitors.len(), monitors.len())),
+                },
+            }
+        }
+    }
+}
+
+/// Run one agent tool against the live app (called from the local API thread).
+fn agent_call(app: &AppHandle, name: &str, args: &Value) -> Result<Value, String> {
+    let state = app.state::<AppState>();
+    let s = |k: &str| args.get(k).and_then(Value::as_str).map(str::to_string).ok_or(format!("missing \"{k}\""));
+    let ok = |v: Value| -> Result<Value, String> { Ok(v) };
+    match name {
+        "status" => {
+            let ui = engine::ui_state(app);
+            let displays: Vec<Value> = ui.monitors.iter().map(|m| {
+                let slot = ui.slots.iter().find(|x| x.monitor_id == m.id || ui.slots.len() == 1);
+                json!({ "display": m.index + 1, "id": m.id, "primary": m.primary, "width": m.rect.width, "height": m.rect.height,
+                        "assigned": ui.config.monitors.get(&m.id), "showing": slot.map(|x| json!({ "id": x.wallpaper_id, "name": x.wallpaper_name, "paused": x.paused })) })
+            }).collect();
+            ok(json!({ "version": ui.version, "layout": ui.config.layout, "paused": ui.config.paused, "default": ui.config.default_source,
+                       "displays": displays, "errors": ui.errors }))
+        }
+        "list_wallpapers" => ok(Value::Array(library::scan(&state.paths).iter().map(|w| json!({
+            "id": w.id, "name": w.manifest.name, "type": w.manifest.kind, "source": w.source, "description": w.manifest.description,
+            "options": w.manifest.properties.keys().collect::<Vec<_>>() })).collect())),
+        "get_wallpaper" => {
+            let id = s("id")?;
+            let w = library::find(&state.paths, &id).ok_or("wallpaper not found")?;
+            let values = w.values(state.config().properties.get(&id));
+            ok(json!({ "id": w.id, "source": w.source, "folder": w.dir(&state.paths), "manifest": w.manifest, "values": values,
+                       "files": library::list_text_files(&state.paths, &id).unwrap_or_default(), "editable": w.source == "user" }))
+        }
+        "set_wallpaper" => {
+            let id = s("id")?;
+            let target = display_target(app, args.get("display"))?;
+            set_source(app.clone(), state.clone(), target.clone(), Some(Source::Wallpaper { id: id.clone() }))?;
+            ok(json!({ "shown": id, "on": if target == "default" { "all displays without their own wallpaper".into() } else { target } }))
+        }
+        "set_options" => {
+            let id = s("id")?;
+            let w = library::find(&state.paths, &id).ok_or("wallpaper not found")?;
+            let values = args.get("values").and_then(Value::as_object).ok_or("missing \"values\" object")?;
+            let unknown: Vec<&String> = values.keys().filter(|k| !w.manifest.properties.contains_key(*k)).collect();
+            if !unknown.is_empty() {
+                return Err(format!("unknown option(s): {unknown:?}. Valid: {:?}", w.manifest.properties.keys().collect::<Vec<_>>()));
+            }
+            let vals = values.clone();
+            state.update(app, |cfg| { let e = cfg.properties.entry(id.clone()).or_default(); for (k, v) in vals { e.insert(k, v); } })?;
+            ok(json!({ "updated": values.keys().collect::<Vec<_>>() }))
+        }
+        "reset_options" => { reset_properties(app.clone(), state.clone(), s("id")?)?; ok(json!("reset")) }
+        "duplicate_wallpaper" => ok(json!({ "id": duplicate_wallpaper(app.clone(), state.clone(), s("id")?)? })),
+        "create_wallpaper" => ok(json!({ "id": create_wallpaper(app.clone(), state.clone(), s("template")?, s("name")?)? })),
+        "list_files" => ok(json!(library::list_text_files(&state.paths, &s("id")?)?)),
+        "read_file" => ok(json!(library::read_text(&state.paths, &s("id")?, &s("path")?)?)),
+        "write_file" => {
+            let id = s("id")?;
+            if !id.starts_with("user/") {
+                return Err("built-in wallpapers are read-only: call duplicate_wallpaper first and edit the copy".into());
+            }
+            editor_write(app.clone(), state.clone(), id, s("path")?, s("content")?)?;
+            ok(json!("saved — the desktop reloaded; call status to check for errors"))
+        }
+        "pause" => {
+            let p = args.get("paused").and_then(Value::as_bool).ok_or("missing \"paused\"")?;
+            state.update(app, |cfg| cfg.paused = p)?;
+            ok(json!({ "paused": p }))
+        }
+        "next_wallpaper" => { engine::next(app); ok(json!("ok")) }
+        _ => Err(format!("unknown tool: {name}")),
+    }
+}
+
+#[tauri::command]
+fn agent_info(state: State<AppState>) -> Value {
+    json!({ "exe": std::env::current_exe().map(|p| p.display().to_string()).unwrap_or_default(), "enabled": state.config().agent_access })
+}
+
+fn start_agent_api(app: &AppHandle) {
+    let h = app.clone();
+    let h2 = app.clone();
+    let Some(server) = agent::serve(
+        move |name, args| agent_call(&h, name, args),
+        move || h2.state::<AppState>().config().agent_access,
+    ) else { return };
+    let app = app.clone();
+    // Keep agent.json in sync with the setting.
+    std::thread::spawn(move || {
+        let mut last = None;
+        loop {
+            let on = app.state::<AppState>().config().agent_access;
+            if last != Some(on) {
+                agent::publish(&app.state::<AppState>().paths.data, &server, on);
+                last = Some(on);
+            }
+            std::thread::sleep(std::time::Duration::from_secs(2));
+        }
+    });
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    // `Wallgates --mcp`: act as an MCP server over stdio for coding agents, then exit.
+    if std::env::args().any(|a| a == "--mcp") {
+        agent::run_mcp();
+        return;
+    }
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
             let files = file_args(&args);
@@ -700,6 +820,7 @@ pub fn run() {
             engine::rebuild(&handle);
             engine::spawn_slow_loop(handle.clone());
             engine::spawn_fast_loop(handle.clone());
+            start_agent_api(&handle);
 
             let args: Vec<String> = std::env::args().collect();
             if !args.iter().any(|a| a == AUTOSTART_ARG) {
@@ -761,6 +882,7 @@ pub fn run() {
             sensors_status,
             sensors_enable,
             sensors_disable,
+            agent_info,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Wallgates");
@@ -768,6 +890,9 @@ pub fn run() {
     app.run(|_app, event| {
         if let RunEvent::Exit = event {
             desktop::restore();
+            if let Some(state) = _app.try_state::<AppState>() {
+                let _ = std::fs::remove_file(state.paths.data.join("agent.json"));
+            }
         }
     });
 }

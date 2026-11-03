@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "wallgates": {
+      "type": "stdio",
+      "command": "cargo",
+      "args": ["run", "--quiet", "--manifest-path", "src-tauri/Cargo.toml", "--", "--mcp"]
+    }
+  }
+}

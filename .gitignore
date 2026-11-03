@@ -7,3 +7,4 @@ sensors-bin/*
 !sensors-bin/.keep
 sensors/bin/
 sensors/obj/
+preview-out/

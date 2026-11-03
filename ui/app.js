@@ -157,6 +157,13 @@ function sourceOf(target) {
 }
 function encodeSource(s) { return s ? (s.kind === 'playlist' ? `p:${s.id}` : `w:${s.id}`) : ''; }
 function decodeSource(v) { return v ? { kind: v[0] === 'p' ? 'playlist' : 'wallpaper', id: v.slice(2) } : null; }
+function displaysOf(id) {
+  const slots = (ui?.slots || []).filter((s) => s.wallpaper_id === id);
+  const mons = ui?.monitors || [];
+  if (mons.length < 2) return t('lib.onDisplay');
+  const names = slots.map((s) => mons.find((m) => m.id === s.monitor_id)).filter(Boolean).map((m) => String(m.index + 1));
+  return names.length ? `${t('disp.display')} ${names.join(' · ')}` : t('lib.onDisplay');
+}
 function liveIds() { return new Set((ui?.slots || []).map((s) => s.wallpaper_id).filter(Boolean)); }
 
 async function refreshLibrary() {
@@ -268,15 +275,26 @@ function importMenu() {
 // ------------------------------------------------------------------ library
 function renderLibrary(view) {
   const monitors = ui?.monitors || [];
-  const perMonitor = cfg().layout !== 'span' && monitors.length > 1;
-  if (!perMonitor) lib.target = 'default';
+  const span = cfg().layout === 'span';
+  const multi = monitors.length > 1;
+  if (!multi || span) lib.target = 'default';
+  // Start on the primary display rather than "All", so one click never changes every screen by surprise.
+  else if (!lib.targetPicked || (lib.target !== 'default' && !monitors.some((m) => m.id === lib.target))) { lib.target = (monitors.find((m) => m.primary) || monitors[0]).id; lib.targetPicked = true; }
 
-  const targetSel = perMonitor
-    ? el('label', { class: 'row', style: 'gap:8px' }, el('span', { class: 'muted' }, t('lib.applyTo')),
-        el('select', { onchange: (e) => { lib.target = e.target.value; renderGrid(); } },
-          el('option', { value: 'default', selected: lib.target === 'default' }, t('lib.allDisplays')),
-          ...monitors.map((m) => el('option', { value: m.id, selected: lib.target === m.id }, `${monitorName(m)} — ${m.rect.width}×${m.rect.height}`))))
-    : null;
+  // Explicit display picker: clicking a wallpaper applies it only to the display chosen here.
+  const targetSel = !multi ? null : span
+    ? el('div', { class: 'row target-note' }, el('span', { class: 'muted' }, t('lib.spanOn')),
+        el('button', { class: 'btn small', onclick: async () => { await patch({ layout: 'per_monitor' }); lib.target = monitors[0].id; } }, t('lib.perDisplay')))
+    : el('div', { class: 'row', style: 'gap:8px' }, el('span', { class: 'muted' }, t('lib.applyTo')),
+        el('div', { class: 'seg target-seg' },
+          ...monitors.map((m) => el('button', {
+            class: lib.target === m.id ? 'active' : '', title: `${m.rect.width}×${m.rect.height}${m.primary ? ' · ' + t('disp.primary') : ''}`,
+            onclick: (e) => { lib.target = m.id; e.target.parentNode.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b === e.target)); lib.selected = null; renderGrid(); renderDetails(true); },
+          }, monitorName(m))),
+          el('button', {
+            class: lib.target === 'default' ? 'active' : '',
+            onclick: (e) => { lib.target = 'default'; e.target.parentNode.querySelectorAll('button').forEach((b) => b.classList.toggle('active', b === e.target)); renderGrid(); },
+          }, t('lib.allDisplays'))));
 
   const chips = el('div', { class: 'seg' },
     ...['all', 'builtin', 'user', 'favorites'].map((f) => el('button', {
@@ -325,7 +343,7 @@ function renderGrid() {
     },
       el('div', { class: 'thumb' }, previewNode(w),
         el('div', { class: 'badges' },
-          live.has(w.id) ? el('span', { class: 'badge live' }, t('lib.onDisplay')) : el('span'),
+          live.has(w.id) ? el('span', { class: 'badge live' }, displaysOf(w.id)) : el('span'),
           el('span', { class: 'badge' }, TYPE_LABEL[w.manifest.type] || w.manifest.type))),
       el('button', {
         class: 'fav' + (favs.has(w.id) ? ' on' : ''), title: t('det.favorite'),
@@ -344,6 +362,8 @@ function renderGrid() {
 async function applyWallpaper(id) {
   lib.selected = id;
   await call('set_source', { target: lib.target, source: { kind: 'wallpaper', id } });
+  const mon = (ui?.monitors || []).find((m) => m.id === lib.target);
+  if ((ui?.monitors || []).length > 1) toast(`✓ ${wpById(id)?.manifest.name || ''} → ${mon ? monitorName(mon) : t('lib.allDisplays')}`);
   renderGrid();
   renderDetails(true);
 }
@@ -507,7 +527,7 @@ function renderDisplays(view) {
       map.append(el('div', {
         class: 'mon',
         style: `left:${offX + (m.rect.x - minX) * s + 4}px;top:${(m.rect.y - minY) * s + 4}px;width:${m.rect.width * s - 8}px;height:${m.rect.height * s - 8}px`,
-        onclick: () => { lib.target = c.layout === 'span' ? 'default' : m.id; go('library'); },
+        onclick: () => { lib.target = c.layout === 'span' ? 'default' : m.id; lib.targetPicked = true; go('library'); },
       }, w ? previewNode(w) : el('div', { class: 'placeholder t-image' }),
         el('div', { class: 'label' }, el('strong', {}, `${monitorName(m)}${m.primary ? ' ★' : ''}`), el('span', {}, slot?.wallpaper_name || ''))));
     }
@@ -796,6 +816,18 @@ function updateEditorErrors() {
 }
 
 // ------------------------------------------------------------------ settings
+// Agent access: coding agents (Claude Code, Cursor, Codex…) control Wallgates through MCP.
+function agentPanel(c) {
+  const cmd = el('code', { class: 'agent-cmd' }, '…');
+  call('agent_info').then((i) => { cmd.textContent = `claude mcp add wallgates -- "${i.exe}" --mcp`; }).catch(() => {});
+  const copy = el('button', { class: 'btn small', onclick: () => navigator.clipboard.writeText(cmd.textContent).then(() => toast('✓')) }, t('set.agentCopy'));
+  return el('div', { class: 'panel' },
+    el('h2', {}, t('set.agent')),
+    el('p', { class: 'muted', style: 'font-size:13px' }, t('set.agentText')),
+    setting(t('set.agentOn'), sw(c.agent_access, (v) => patch({ agent_access: v }))),
+    el('div', { class: 'stack', style: 'gap:6px;margin-top:8px' }, el('span', { class: 'muted', style: 'font-size:12.5px' }, t('set.agentHow')), cmd, el('div', { class: 'row' }, copy)));
+}
+
 function setting(label, control) {
   return el('label', { class: 'setting' }, el('span', {}, label), control);
 }
@@ -910,6 +942,7 @@ async function renderSettings(view) {
         setting(t('set.updates'), sw(c.integrations?.update_check, (v) => patch({ integrations: { update_check: v } }))),
         setting(t('set.marketsOn'), sw(c.integrations?.markets, (v) => patch({ integrations: { markets: v } }))),
         setting(t('set.mature'), sw(c.show_mature, (v) => patch({ show_mature: v })))),
+      agentPanel(c),
       el('div', { class: 'panel' },
         el('h2', {}, t('set.about')),
         el('div', { class: 'row', style: 'justify-content:flex-start;gap:14px;margin:8px 0 14px' },
