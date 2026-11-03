@@ -4,20 +4,19 @@
 <meta charset="utf-8">
 <script src="/__wallgates/wallgates-sdk.js"></script>
 <style>
-  /* Palettes follow the Windows Terminal schemes (Campbell / PowerShell). */
-  :root { --desk: #000; --bg: #0c0c0c; --fg: #cccccc; --hi: #f2f2f2; --dim: #767676; --lab: #3a96dd;
-          --ok: #13a10e; --warn: #c19c00; --bad: #e74856; --acc: #61d6d6; --bar: #3b3b3b; --title: #1f1f1f; --fs: 14px; --w: 42vw; --op: 0.94; }
-  body.powershell { --bg: #012456; --fg: #eeedf0; --hi: #ffffff; --dim: #8a9cc2; --lab: #f9f1a5; --ok: #16c60c; --warn: #f9f1a5; --bad: #ff6b6b; --acc: #61d6d6; --bar: #24427a; --title: #0a1f47; }
-  body.wallgates { --bg: #0b0a14; --fg: #d4d7f5; --hi: #ffffff; --dim: #6e7199; --lab: #a78bfa; --ok: #22d3ee; --warn: #fbbf24; --bad: #fb7185; --acc: #22d3ee; --bar: #24223a; --title: #141226; }
-  body.green { --bg: #000a02; --fg: #33ff66; --hi: #b6ffcb; --dim: #1f8c3f; --lab: #7dff9f; --ok: #33ff66; --warn: #d6ff33; --bad: #ff5555; --acc: #b6ffcb; --bar: #0a2a12; --title: #021405; }
-  body.amber { --bg: #0a0600; --fg: #ffb000; --hi: #ffd27a; --dim: #9a6a10; --lab: #ffd27a; --ok: #ffb000; --warn: #ffe08a; --bad: #ff5a36; --acc: #ffd27a; --bar: #2a1a00; --title: #140c00; }
+  :root { --desk: #000; --bg: #0c0c0c; --fg: #cccccc; --hi: #f2f2f2; --dim: #767676; --lab: #3a96dd; --frame: #3a3a3a;
+          --ok: #16c60c; --warn: #c19c00; --bad: #e74856; --acc: #61d6d6; --bar: #333; --fs: 15px; --w: 66vw; --op: 0.94; }
+  body.powershell { --bg: #012456; --fg: #eeedf0; --hi: #ffffff; --dim: #8a9cc2; --lab: #f9f1a5; --frame: #2d4f8f; --ok: #16c60c; --warn: #f9f1a5; --bad: #ff6b6b; --acc: #61d6d6; --bar: #24427a; }
+  body.wallgates { --bg: #0b0a14; --fg: #d4d7f5; --hi: #ffffff; --dim: #6e7199; --lab: #a78bfa; --frame: #2c2945; --ok: #22d3ee; --warn: #fbbf24; --bad: #fb7185; --acc: #22d3ee; --bar: #24223a; }
+  body.green { --bg: #000a02; --fg: #33ff66; --hi: #b6ffcb; --dim: #1f8c3f; --lab: #7dff9f; --frame: #0f3d1c; --ok: #33ff66; --warn: #d6ff33; --bad: #ff5555; --acc: #b6ffcb; --bar: #0a2a12; }
+  body.amber { --bg: #0a0600; --fg: #ffb000; --hi: #ffd27a; --dim: #9a6a10; --lab: #ffd27a; --frame: #3d2900; --ok: #ffb000; --warn: #ffe08a; --bad: #ff5a36; --acc: #ffd27a; --bar: #2a1a00; }
   body.bg-graphite { --desk: #1a1b1f; }
   body.bg-navy { --desk: #0a1226; }
   body.bg-wallgates { --desk: linear-gradient(160deg, #0d0b1d 0%, #07070e 55%, #0b1320 100%); }
 
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden; }
-  body { background: var(--desk); display: flex; padding: 3.2vh 2.4vw; font-family: "Cascadia Mono", "Cascadia Code", Consolas, "Lucida Console", ui-monospace, monospace; }
+  body { background: var(--desk); display: flex; padding: 3vh 2.5vw; font-family: "Cascadia Mono", "Cascadia Code", Consolas, "Lucida Console", ui-monospace, monospace; }
   body.pos-right { justify-content: flex-end; align-items: center; }
   body.pos-left { justify-content: flex-start; align-items: center; }
   body.pos-center { justify-content: center; align-items: center; }
@@ -26,180 +25,74 @@
   body.pos-bottom-right { justify-content: flex-end; align-items: flex-end; }
   body.pos-bottom-left { justify-content: flex-start; align-items: flex-end; }
 
-  .win { width: var(--w); max-height: 100%; display: flex; flex-direction: column; background: color-mix(in srgb, var(--bg) calc(var(--op) * 100%), transparent);
-         border: 1px solid color-mix(in srgb, var(--dim) 45%, transparent); box-shadow: 0 1.2vh 4vh rgba(0, 0, 0, 0.55); }
-  .title { display: flex; align-items: center; gap: 0.7em; height: 2.1em; padding: 0 0 0 0.8em; background: var(--title); color: var(--fg);
-           font: calc(var(--fs) * 0.82) "Segoe UI", system-ui, sans-serif; flex: none; }
-  .title .ico { width: 1.25em; height: 1.25em; border: 1px solid var(--dim); font: 700 0.7em/1.6 Consolas, monospace; text-align: center; color: var(--fg); }
-  .title .name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: 0.9; }
-  .title .ctl { display: flex; height: 100%; }
-  .title .ctl span { width: 3.2em; display: grid; place-items: center; opacity: 0.75; }
-  pre { margin: 0; padding: 0.7em 1em 0.9em; font-size: var(--fs); line-height: 1.32; font-family: inherit; color: var(--fg); white-space: pre; overflow: hidden; }
+  .win { width: var(--w); max-height: 100%; background: color-mix(in srgb, var(--bg) calc(var(--op) * 100%), transparent);
+         border: 1px solid var(--frame); border-radius: 0.5em; padding: 0.9em 1.1em 0.8em; font-size: var(--fs); color: var(--fg);
+         display: flex; flex-direction: column; gap: 0.75em; overflow: hidden; }
+  pre { margin: 0; font: inherit; line-height: 1.38; white-space: pre; overflow: hidden; }
+  .head, .foot { display: flex; justify-content: space-between; align-items: baseline; gap: 2em; white-space: pre; }
+  .head .clock { font-size: 1.55em; color: var(--hi); letter-spacing: 0.04em; }
+  .foot { color: var(--dim); border-top: 1px solid var(--frame); padding-top: 0.55em; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75em 1em; align-items: stretch; margin-top: 0.35em; }
+  .col { display: flex; flex-direction: column; gap: 0.95em; min-width: 0; }
+  .box { position: relative; border: 1px solid var(--frame); border-radius: 0.35em; padding: 0.75em 0.85em 0.6em; min-width: 0; }
+  .col > .box:last-child { flex: 1; }
+  .box > .t { position: absolute; top: -0.72em; left: 0.7em; padding: 0 0.45em; background: var(--bg); color: var(--lab); letter-spacing: 0.08em; line-height: 1.3; }
+  .box > .t b { color: var(--hi); font-weight: 400; }
   .hi { color: var(--hi); } .dim { color: var(--dim); } .lab { color: var(--lab); } .acc { color: var(--acc); }
-  .ok { color: var(--ok); } .warn { color: var(--warn); } .bad { color: var(--bad); }
-  .barbg { color: var(--bar); }
+  .ok { color: var(--ok); } .warn { color: var(--warn); } .bad { color: var(--bad); } .barbg { color: var(--bar); }
   .cursor { display: inline-block; width: 0.6em; height: 1.05em; vertical-align: -0.15em; background: var(--fg); animation: blink 1.06s steps(2) infinite; }
   body.paused .cursor { animation: none; }
   @keyframes blink { 50% { opacity: 0; } }
-  .logo { color: var(--lab); }
+  .hidden { display: none !important; }
 </style>
 </head>
-<body class="cmd pos-right bg-black">
+<body class="wallgates pos-center bg-black">
 <div class="win" id="win">
-  <div class="title" id="title"><span class="ico">C:\</span><span class="name" id="titleText">Wallgates — Command Prompt</span><span class="ctl"><span>&#x2014;</span><span>&#x2610;</span><span>&#x2715;</span></span></div>
-  <pre id="out"></pre>
+  <div class="head"><pre id="cmd"></pre><span class="clock" id="clock"></span></div>
+  <div class="grid" id="grid">
+    <div class="col">
+      <section class="box" id="cpuBox"><span class="t">CPU</span><pre id="cpu"></pre></section>
+      <section class="box" id="memBox"><span class="t">MEMORY</span><pre id="mem"></pre></section>
+      <section class="box" id="diskBox"><span class="t">STORAGE</span><pre id="disk"></pre></section>
+      <section class="box" id="netBox"><span class="t">NETWORK · FANS</span><pre id="net"></pre></section>
+    </div>
+    <div class="col">
+      <section class="box" id="gpuBox"><span class="t">GPU</span><pre id="gpu"></pre></section>
+      <section class="box" id="procBox"><span class="t">PROCESSES <b>top 5</b></span><pre id="proc"></pre></section>
+      <section class="box" id="wxBox"><span class="t">WEATHER</span><pre id="wx"></pre></section>
+    </div>
+  </div>
+  <div class="foot"><pre id="music"></pre><pre id="status"></pre></div>
 </div>
 <script>
-// System Terminal v3 — Wallgates built-in wallpaper (CC BY 4.0). A plain command prompt, no effects.
+// System Terminal v4 — Wallgates built-in wallpaper (CC BY 4.0). Terminal-style monitor, text only.
 const $ = (id) => document.getElementById(id);
 const lang = navigator.language || 'en-US';
-const COLS = 84;
-const LOGO = [
-  '      ▄▄▄██████▄▄▄',
-  '   ▄██▀▀ .:░░:. ▀▀██▄',
-  ' ▄█▀   .:░▒▓▓▒░:.   ▀█▄',
-  ' ██  .:░▒▓▓▓▓▓▓▒░:.  ██',
-  ' ██  ~~~~~~~~~~~~~~  ██',
-  ' ██  ░▒▒▓▓▓▓▓▓▓▓▒▒░  ██',
-  '▀██▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀██▀',
-];
-let o = {}, s = null, w = null, media = null;
-let typed = '', typingDone = false;
-const hist = { cpu: [], gpu: [], ram: [], ssd: [] };
+const COLW = 58; // characters per panel line
+let o = {}, s = null, w = null, media = null, typed = '', typingDone = false;
+const hist = { cpu: [], gpu: [], ram: [], rx: [], tx: [] };
 
 // ---------------------------------------------------------------- text helpers
-// A line is a list of [text, class] segments; rendering escapes everything.
 const seg = (t, c) => [String(t), c || ''];
 const pad = (t, n) => { t = String(t); return t.length >= n ? t.slice(0, n) : t + ' '.repeat(n - t.length); };
 const lpad = (t, n) => { t = String(t); return t.length >= n ? t.slice(0, n) : ' '.repeat(n - t.length) + t; };
+const clip = (t, n) => { t = String(t); return t.length > n ? t.slice(0, n - 1) + '…' : t; };
 const bytes = (b) => { if (b == null || !isFinite(b)) return '—'; const u = ['B', 'KB', 'MB', 'GB', 'TB']; let i = 0; while (b >= 1024 && i < 4) { b /= 1024; i++; } return `${b.toFixed(b < 10 && i ? 1 : 0)} ${u[i]}`; };
 const rate = (b) => (b == null ? '—' : bytes(b) + '/s');
-const deg = (c) => (c == null ? '  — ' : o.fahrenheit ? `${Math.round(c * 9 / 5 + 32)}°F` : `${Math.round(c)}°C`);
+const deg = (c) => (c == null ? '—' : o.fahrenheit ? `${Math.round(c * 9 / 5 + 32)}°F` : `${Math.round(c)}°C`);
 const lvl = (v, warn, bad) => (v == null ? 'dim' : v >= bad ? 'bad' : v >= warn ? 'warn' : 'ok');
 const SPARK = '▁▂▃▄▅▆▇█';
-const clip = (t, n) => { t = String(t); return t.length > n ? t.slice(0, n - 1) + '…' : t; };
-const spark = (arr) => arr.slice(-12).map((v) => (v == null ? ' ' : SPARK[Math.min(7, Math.floor((v / 100) * 8))])).join('');
-const push = (a, v) => { a.push(v ?? null); while (a.length > 30) a.shift(); };
+const spark = (arr, n, max = 100) => { const a = arr.slice(-n); const m = max || Math.max(1, ...a.filter((x) => x != null)); return pad(a.map((v) => (v == null ? ' ' : SPARK[Math.min(7, Math.floor((v / m) * 7.99))])).join(''), n); };
+const push = (a, v, n = 60) => { a.push(v ?? null); while (a.length > n) a.shift(); };
+const meter = (v, width, warn, bad, label) => {
+  if (v == null) return [seg('['), seg('·'.repeat(width), 'barbg'), seg(']'), seg(lpad(label ?? 'n/a', 7), 'dim')];
+  const n = Math.round(Math.max(0, Math.min(100, v)) / 100 * width);
+  return [seg('['), seg('|'.repeat(n), lvl(v, warn, bad)), seg('·'.repeat(width - n), 'barbg'), seg(']'), seg(lpad(label ?? `${v.toFixed(1)}%`, 7), 'hi')];
+};
 
-// htop-style meter: [||||||||          48.0%]
-function meter(v, width, warn, bad) {
-  if (v == null) return [seg('['), seg(' '.repeat(width), 'barbg'), seg(lpad('n/a', 6), 'dim'), seg(']')];
-  const inner = width;
-  const n = Math.round(Math.max(0, Math.min(100, v)) / 100 * inner);
-  return [seg('['), seg('|'.repeat(n), lvl(v, warn, bad)), seg(' '.repeat(inner - n)), seg(lpad(`${v.toFixed(1)}%`, 6), 'hi'), seg(']')];
-}
-
-// ---------------------------------------------------------------- build output
-function lines() {
-  const L = [];
-  const user = String(o.operator || 'Operator').replace(/[^\w.-]/g, '') || 'Operator';
-  const prompt = `C:\\Users\\${user}>`;
-  L.push([seg(`Wallgates OS [Version ${'0.6'}]`, 'dim')]);
-  L.push([seg('(c) Wallgates contributors. GPL-3.0.', 'dim')]);
-  L.push([]);
-  L.push([seg(prompt), seg(' '), seg(typed, 'hi'), typingDone ? seg('') : ['', 'cursor']]);
-  if (!typingDone) return L;
-  L.push([]);
-
-  if (o.showLogo) { for (const l of LOGO) L.push([seg('  ' + l, 'logo')]); L.push([]); }
-
-  const now = new Date();
-  const time = now.toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: !o.format24 });
-  const date = now.toLocaleDateString(lang, { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
-  L.push([seg(' TIME     ', 'lab'), seg(time, 'hi'), seg(`  ${date}`)]);
-  if (s) {
-    const up = s.uptime || 0;
-    L.push([seg(' HOST     ', 'lab'), seg(`${s.host || '?'}`, 'hi'), seg(`  ${s.os || ''}`), seg(`  up ${Math.floor(up / 86400)}d ${String(Math.floor(up % 86400 / 3600)).padStart(2, '0')}:${String(Math.floor(up % 3600 / 60)).padStart(2, '0')}`, 'dim')]);
-  }
-  L.push([]);
-
-  if (!s) { L.push([seg(' Collecting system data…', 'dim')]); return L; }
-  const g = s.gpu || {};
-  const drives = s.drives || [];
-  const sys = drives.find((d) => /C:/i.test(d.letters || '')) || drives[0] || {};
-  const vol = (s.disks || []).find((d) => /^C:/i.test(d.mount || '')) || (s.disks || [])[0];
-
-  // Device table
-  L.push([seg(' ' + pad('DEVICE', 9), 'lab'), seg(pad('LOAD', 30), 'lab'), seg(lpad('TEMP', 6), 'lab'), seg('  INFO', 'lab')]);
-  const row = (name, load, temp, warnT, badT, info) => L.push([seg(' ' + pad(name, 9), 'hi'), ...meter(load, 22, o.loadMax - 15, o.loadMax), seg('  '), seg(lpad(deg(temp), 5), lvl(temp, warnT, badT)), seg('  ' + clip(info, COLS - 50), 'dim')]);
-  const cpuName = String(s.cpuName || 'CPU').replace(/\(R\)|\(TM\)|CPU|Processor|\d+-Core/gi, '').replace(/\s+/g, ' ').trim();
-  row('CPU', s.cpu, s.cpuTemp, o.cpuTempMax - 10, o.cpuTempMax, `${cpuName} · ${s.cpuFreq ? (s.cpuFreq / 1000).toFixed(2) + ' GHz' : ''}${s.cpuPower != null ? ' · ' + Math.round(s.cpuPower) + ' W' : ''} · ${(s.cores || []).length}T`);
-  const gpuName = String(g.name || 'n/a').replace(/NVIDIA |GeForce |AMD |Radeon |\(R\)/g, '');
-  row('GPU', g.usage, g.temp, o.gpuTempMax - 10, o.gpuTempMax, `${gpuName}${g.vramTotal ? ` · VRAM ${bytes(g.vramUsed)}/${bytes(g.vramTotal)}` : ''}${g.fan ? ` · ${g.fan} rpm` : ''}`);
-  row('RAM', s.memory, s.ramTemp, 55, 70, `${bytes(s.memoryUsed)}/${bytes(s.memoryTotal)} · free ${bytes(s.memoryAvailable)}${s.ramTemp == null ? ' · temp: no sensor' : ''}`);
-  const ssdName = String(sys.model || 'disk').replace(/Samsung SSD |WDC |WD_BLACK /i, '').slice(0, 16);
-  row(`SSD ${(sys.letters || '').split(' ')[0] || ''}`.trim(), sys.active, sys.temp, o.ssdTempMax - 10, o.ssdTempMax,
-    `${ssdName} · R ${rate(sys.read)} W ${rate(sys.write)}${vol ? ` · ${bytes(vol.used)}/${bytes(vol.total)}` : ''}`);
-  for (const d of drives.filter((d) => d !== sys).slice(0, 2)) {
-    row(`SSD ${(d.letters || '').split(' ')[0] || d.index}`, d.active, d.temp, o.ssdTempMax - 10, o.ssdTempMax, `${String(d.model || '').slice(0, 16)} · R ${rate(d.read)} W ${rate(d.write)}`);
-  }
-  if (o.showHistory) {
-    L.push([seg(' ' + pad('HISTORY', 9), 'lab'), seg('cpu ', 'dim'), seg(pad(spark(hist.cpu), 12), 'acc'), seg('  gpu ', 'dim'), seg(pad(spark(hist.gpu), 12), 'acc'),
-      seg('  ram ', 'dim'), seg(pad(spark(hist.ram), 12), 'acc'), seg('  ssd ', 'dim'), seg(pad(spark(hist.ssd), 12), 'acc')]);
-  }
-  L.push([]);
-
-  if (o.showProcs) {
-    L.push([seg(' ' + pad('TOP', 9), 'lab'), seg(pad('#  PROCESS', 30), 'lab'), seg(lpad('CPU', 7), 'lab'), seg(lpad('MEMORY', 10), 'lab')]);
-    (s.processes || []).slice(0, 5).forEach((p, i) => {
-      const name = p.name + (p.count > 1 ? ` (${p.count})` : '');
-      L.push([seg(' ' + ' '.repeat(9)), seg(`${i + 1}  `, 'dim'), seg(pad(name, 27), 'hi'), seg(lpad(`${p.cpu.toFixed(1)}%`, 7), lvl(p.cpu, 40, 80)), seg(lpad(bytes(p.memory), 10))]);
-    });
-    L.push([]);
-  }
-
-  if (o.showNet) {
-    L.push([seg(' ' + pad('NETWORK', 9), 'lab'), seg('down ', 'dim'), seg(pad(rate(s.net?.rx), 13), 'hi'), seg('up ', 'dim'), seg(pad(rate(s.net?.tx), 13), 'hi')]);
-    const fans = s.fans || [];
-    if (fans.length) L.push([seg(' ' + pad('FANS', 9), 'lab'), seg(fans.slice(0, 5).map((f) => `${f.label} ${f.rpm}`).join(' · '))]);
-    L.push([]);
-  }
-
-  if (o.showWeather) {
-    if (!w) {
-      L.push([seg(' ' + pad('WEATHER', 9), 'lab'), seg('offline — Wallgates → Settings → Weather & location', 'dim')]);
-    } else {
-      const uvTxt = (u) => (u == null ? '—' : u < 3 ? 'low' : u < 6 ? 'moderate' : u < 8 ? 'high' : u < 11 ? 'very high' : 'extreme');
-      const aqTxt = (a) => (a == null ? '—' : a <= 20 ? 'good' : a <= 40 ? 'fair' : a <= 60 ? 'moderate' : a <= 80 ? 'poor' : 'very poor');
-      const uvCls = (u) => (u == null ? 'dim' : u >= 8 ? 'bad' : u >= 6 ? 'warn' : 'ok');
-      const city = String(w.location || '').split(',')[0];
-      L.push([seg(' ' + pad('WEATHER', 9), 'lab'), seg(`${city} `, 'hi'), seg(`${Math.round(w.temperature)}${w.units || '°'} `, 'hi'), seg(clip(`${String(w.description || '').toLowerCase()} · feels ${Math.round(w.feelsLike)}° · hum ${Math.round(w.humidity)}% · wind ${Math.round(w.wind)} ${w.windUnits || ''}`, COLS - 18 - city.length))]);
-      L.push([seg(' ' + ' '.repeat(9)), seg('UV ', 'dim'), seg(`${w.uv != null ? Math.round(w.uv) : '—'} ${uvTxt(w.uv)}`, uvCls(w.uv)), seg(' · AQI ', 'dim'), seg(`${w.air?.aqi != null ? Math.round(w.air.aqi) : '—'} ${aqTxt(w.air?.aqi)}`, w.air?.aqi > 60 ? 'warn' : 'ok'),
-        seg(` · rain ${w.rainChance ?? '—'}% · ${w.pressure != null ? Math.round(w.pressure) : '—'} hPa`, 'dim')]);
-      L.push([]);
-      L.push([seg(' ' + pad('FORECAST', 9), 'lab'), seg(pad('DAY', 7), 'lab'), seg(pad('SKY', 18), 'lab'), seg(lpad('MAX', 5), 'lab'), seg(lpad('MIN', 5), 'lab'), seg(lpad('RAIN', 6), 'lab'), seg(lpad('UV', 4), 'lab')]);
-      (w.days || []).slice(0, 4).forEach((d, i) => {
-        const day = i === 0 ? 'today' : new Date(d.date + 'T12:00').toLocaleDateString(lang, { weekday: 'short' });
-        L.push([seg(' ' + ' '.repeat(9)), seg(pad(day, 7), i === 0 ? 'hi' : ''), seg(pad(String(d.description || '').toLowerCase(), 18), 'dim'),
-          seg(lpad(`${Math.round(d.max)}°`, 5), 'hi'), seg(lpad(`${Math.round(d.min)}°`, 5)), seg(lpad(`${d.rainChance ?? '—'}%`, 6), d.rainChance >= 60 ? 'acc' : ''), seg(lpad(d.uvMax != null ? Math.round(d.uvMax) : '—', 4), uvCls(d.uvMax))]);
-      });
-      L.push([]);
-    }
-  }
-
-  if (o.showSun && w) {
-    const today = (w.days || [])[0] || {};
-    const hm = (iso) => (iso ? new Date(iso).toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit', hour12: !o.format24 }) : '—');
-    const sr = today.sunrise ? new Date(today.sunrise) : null, ss = today.sunset ? new Date(today.sunset) : null;
-    let light = '';
-    if (sr && ss) { const left = (ss - now) / 60000; light = now < sr ? 'before sunrise' : left > 0 ? `${Math.floor(left / 60)}h ${Math.round(left % 60)}m of light left` : 'after sunset'; }
-    const syn = 29.530588853, age = ((((now.getTime() / 86400000) - Date.UTC(2000, 0, 6, 18, 14) / 86400000) % syn) + syn) % syn;
-    const names = ['new moon', 'waxing crescent', 'first quarter', 'waxing gibbous', 'full moon', 'waning gibbous', 'last quarter', 'waning crescent'];
-    const moon = `${names[Math.floor((age / syn) * 8 + 0.5) % 8]} ${Math.round((1 - Math.cos((2 * Math.PI * age) / syn)) / 2 * 100)}%`;
-    L.push([seg(' ' + pad('SUN', 9), 'lab'), seg(`rise ${hm(today.sunrise)} · set ${hm(today.sunset)} · ${light}`), seg(`  moon ${moon}`, 'dim')]);
-  }
-  if (o.showMedia && media?.title) {
-    L.push([seg(' ' + pad('MUSIC', 9), 'lab'), seg(`${media.playing ? '▶' : '❚❚'} `, 'acc'), seg(media.title, 'hi'), seg(media.artist ? ` — ${media.artist}` : '', 'dim')]);
-  }
-  L.push([]);
-  L.push([seg(prompt), seg(' '), ['', 'cursor']]);
-  return L;
-}
-
-function render() {
-  const out = $('out');
+function paint(id, lines) {
   const frag = document.createDocumentFragment();
-  lines().forEach((line, i) => {
+  lines.forEach((line, i) => {
     if (i) frag.append('\n');
     for (const [text, cls] of line) {
       if (cls === 'cursor') { const c = document.createElement('span'); c.className = 'cursor'; frag.append(c); continue; }
@@ -207,38 +100,209 @@ function render() {
       const sp = document.createElement('span'); sp.className = cls; sp.textContent = text; frag.append(sp);
     }
   });
-  out.replaceChildren(frag);
+  $(id).replaceChildren(frag);
+}
+
+// ---------------------------------------------------------------- panels
+function cpuPanel() {
+  const cores = s.cores || [];
+  const name = String(s.cpuName || 'CPU').replace(/\(R\)|\(TM\)|CPU|Processor|\d+-Core/gi, '').replace(/\s+/g, ' ').trim();
+  const L = [];
+  L.push([seg(clip(name, COLW - 12), 'hi'), seg(lpad(`${cores.length} threads`, COLW - Math.min(name.length, COLW - 12)), 'dim')]);
+  L.push([seg('load '), ...meter(s.cpu, 30, o.loadMax - 15, o.loadMax), seg('  '), seg(lpad(deg(s.cpuTemp), 6), lvl(s.cpuTemp, o.cpuTempMax - 10, o.cpuTempMax))]);
+  L.push([seg('freq ', 'dim'), seg(pad(s.cpuFreq ? `${(s.cpuFreq / 1000).toFixed(2)} GHz` : '—', 12), 'hi'), seg('power ', 'dim'), seg(pad(s.cpuPower != null ? `${Math.round(s.cpuPower)} W` : '—', 10), 'hi'),
+    seg('procs ', 'dim'), seg(String(s.processCount ?? '—'), 'hi')]);
+  if (o.showHistory) L.push([seg('hist ', 'dim'), seg(spark(hist.cpu, COLW - 5), 'acc')]);
+  if (o.showCores && cores.length) {
+    L.push([]);
+    const per = 3, cw = Math.floor(COLW / per);
+    for (let i = 0; i < cores.length; i += per) {
+      const line = [];
+      for (let j = i; j < Math.min(i + per, cores.length); j++) {
+        const v = cores[j], n = Math.round(Math.min(100, v) / 100 * 8);
+        line.push(seg(`C${String(j).padStart(2, '0')} `, 'dim'), seg('|'.repeat(n), lvl(v, o.loadMax - 15, o.loadMax)), seg('·'.repeat(8 - n), 'barbg'), seg(lpad(`${Math.round(v)}%`, 5)), seg(' '.repeat(cw - 17)));
+      }
+      L.push(line);
+    }
+  }
+  return L;
+}
+
+function memPanel() {
+  const L = [];
+  const swapPct = s.swapTotal ? (s.swapUsed / s.swapTotal) * 100 : null;
+  L.push([seg('ram  '), ...meter(s.memory, 30, 80, 92), seg('  '), seg(lpad(s.ramTemp == null ? 'no sensor' : deg(s.ramTemp), 9), s.ramTemp == null ? 'dim' : lvl(s.ramTemp, 55, 70))]);
+  L.push([seg('used ', 'dim'), seg(pad(bytes(s.memoryUsed), 10), 'hi'), seg('free ', 'dim'), seg(pad(bytes(s.memoryAvailable), 10), 'hi'), seg('total ', 'dim'), seg(bytes(s.memoryTotal), 'hi')]);
+  L.push([seg('swap '), ...meter(swapPct, 30, 50, 80, s.swapTotal ? bytes(s.swapUsed) : 'off')]);
+  if (o.showHistory) L.push([seg('hist ', 'dim'), seg(spark(hist.ram, COLW - 5), 'acc')]);
+  const hogs = (s.memoryHogs || []).slice(0, 3);
+  if (hogs.length) L.push([seg('top  ', 'dim'), seg(clip(hogs.map((h) => `${h.name.replace(/\.exe$/i, '')} ${bytes(h.memory)}`).join(' · '), COLW - 5))]);
+  return L;
+}
+
+function diskPanel() {
+  const L = [];
+  const drives = s.drives || [];
+  const vols = s.disks || [];
+  drives.slice(0, 3).forEach((d, i) => {
+    if (i) L.push([]);
+    const tag = (d.letters || '').trim() || `disk ${d.index ?? i}`;
+    L.push([seg(pad(clip(tag, 8), 9), 'hi'), seg(pad(clip(d.model || '', COLW - 17), COLW - 17), 'dim'), seg(lpad(deg(d.temp), 8), lvl(d.temp, o.ssdTempMax - 10, o.ssdTempMax))]);
+    L.push([seg('act  '), ...meter(d.active, 18, 70, 95), seg('  R ', 'dim'), seg(pad(rate(d.read), 11), 'hi'), seg('W ', 'dim'), seg(rate(d.write), 'hi')]);
+  });
+  if (o.showDisks && vols.length) {
+    L.push([]);
+    for (const v of vols.slice(0, 4)) {
+      const pct = v.total ? (v.used / v.total) * 100 : null;
+      L.push([seg(pad(clip(String(v.mount).replace(/\\$/, ''), 5), 5), 'hi'), ...meter(pct, 26, 85, 95), seg(`  ${bytes(v.used)} / ${bytes(v.total)}`, 'dim')]);
+    }
+  }
+  return L.length ? L : [[seg('no drive data', 'dim')]];
+}
+
+function gpuPanel() {
+  const g = s.gpu || {};
+  const L = [];
+  const vram = g.vramTotal ? ((g.vramUsed || 0) / g.vramTotal) * 100 : null;
+  L.push([seg(clip(String(g.name || 'GPU data unavailable'), COLW), 'hi')]);
+  L.push([seg('load '), ...meter(g.usage, 30, o.loadMax - 15, o.loadMax), seg('  '), seg(lpad(deg(g.temp), 6), lvl(g.temp, o.gpuTempMax - 10, o.gpuTempMax))]);
+  L.push([seg('vram '), ...meter(vram, 30, 85, 95, g.vramTotal ? bytes(g.vramUsed) : 'n/a'), seg(`  / ${g.vramTotal ? bytes(g.vramTotal) : '—'}`, 'dim')]);
+  L.push([seg('hot  ', 'dim'), seg(pad(deg(g.hotspot), 8), 'hi'), seg('fan ', 'dim'), seg(pad(g.fan ? `${g.fan} rpm` : '—', 11), 'hi'), seg('power ', 'dim'), seg(g.power != null ? `${Math.round(g.power)} W` : '—', 'hi')]);
+  if (o.showHistory) L.push([seg('hist ', 'dim'), seg(spark(hist.gpu, COLW - 5), 'acc')]);
+  return L;
+}
+
+function procPanel() {
+  const L = [[seg(pad('#  PROCESS', 28), 'lab'), seg(pad('CPU', 18), 'lab'), seg(lpad('MEMORY', 10), 'lab')]];
+  const procs = (s.processes || []).slice(0, 5);
+  const top = Math.max(1, ...procs.map((p) => p.cpu));
+  procs.forEach((p, i) => {
+    const name = p.name.replace(/\.exe$/i, '') + (p.count > 1 ? ` ×${p.count}` : '');
+    const n = Math.round((p.cpu / top) * 8);
+    L.push([seg(`${i + 1}  `, 'dim'), seg(pad(clip(name, 24), 25), 'hi'), seg('|'.repeat(n), lvl(p.cpu, 40, 80)), seg('·'.repeat(8 - n), 'barbg'), seg(lpad(`${p.cpu.toFixed(1)}%`, 7)), seg(lpad(bytes(p.memory), 13))]);
+  });
+  return L;
+}
+
+function netPanel() {
+  const L = [];
+  const peak = Math.max(1, ...hist.rx.filter(Boolean), ...hist.tx.filter(Boolean));
+  L.push([seg('▼ down ', 'dim'), seg(pad(rate(s.net?.rx), 12), 'hi'), seg(spark(hist.rx, COLW - 19, peak), 'acc')]);
+  L.push([seg('▲ up   ', 'dim'), seg(pad(rate(s.net?.tx), 12), 'hi'), seg(spark(hist.tx, COLW - 19, peak), 'lab')]);
+  const fans = s.fans || [];
+  if (fans.length) {
+    L.push([]);
+    for (let i = 0; i < Math.min(fans.length, 6); i += 2) {
+      const a = fans[i], b = fans[i + 1];
+      L.push([seg(pad(clip(a.label, 14), 15), 'dim'), seg(pad(`${a.rpm} rpm`, 14), 'hi'), ...(b ? [seg(pad(clip(b.label, 14), 15), 'dim'), seg(`${b.rpm} rpm`, 'hi')] : [])]);
+    }
+  }
+  return L;
+}
+
+function wxPanel() {
+  if (!w) return [[seg('offline — Wallgates → Settings → Weather & location', 'dim')], [seg('turn it on and pick your city', 'dim')]];
+  const uvTxt = (u) => (u == null ? '—' : u < 3 ? 'low' : u < 6 ? 'moderate' : u < 8 ? 'high' : u < 11 ? 'very high' : 'extreme');
+  const uvCls = (u) => (u == null ? 'dim' : u >= 8 ? 'bad' : u >= 6 ? 'warn' : 'ok');
+  const aqTxt = (a) => (a == null ? '—' : a <= 20 ? 'good' : a <= 40 ? 'fair' : a <= 60 ? 'moderate' : a <= 80 ? 'poor' : 'very poor');
+  const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+  const L = [];
+  const city = String(w.location || '').split(',')[0];
+  L.push([seg(city + '  ', 'hi'), seg(`${Math.round(w.temperature)}${w.units || '°'}  `, 'hi'), seg(String(w.description || '').toLowerCase()), seg(`   H ${Math.round(w.high)}° L ${Math.round(w.low)}°`, 'dim')]);
+  L.push([seg('feels ', 'dim'), seg(`${Math.round(w.feelsLike)}°`, 'hi'), seg('  hum ', 'dim'), seg(`${Math.round(w.humidity)}%`, 'hi'), seg('  wind ', 'dim'),
+    seg(`${Math.round(w.wind)} ${w.windUnits || ''}${w.windDir != null ? ' ' + dirs[Math.round(w.windDir / 45) % 8] : ''}`, 'hi'), seg('  ', ''), seg(`${w.pressure != null ? Math.round(w.pressure) : '—'} hPa`, 'dim')]);
+  L.push([seg('UV ', 'dim'), seg(`${w.uv != null ? Math.round(w.uv) : '—'} ${uvTxt(w.uv)}`, uvCls(w.uv)), seg('  max ', 'dim'), seg(`${w.uvMax != null ? Math.round(w.uvMax) : '—'}`, uvCls(w.uvMax)),
+    seg('   AQI ', 'dim'), seg(`${w.air?.aqi != null ? Math.round(w.air.aqi) : '—'} ${aqTxt(w.air?.aqi)}`, w.air?.aqi > 60 ? 'warn' : 'ok'), seg(`  PM2.5 ${w.air?.pm25 != null ? Math.round(w.air.pm25) : '—'}`, 'dim')]);
+  // Next 12 hours: hour / temp / rain rows
+  const hours = (w.hours || []).slice(0, 12);
+  if (hours.length) {
+    L.push([]);
+    const h12 = (iso) => new Date(iso).toLocaleTimeString(lang, { hour: '2-digit', hour12: !o.format24 }).replace(/\s/g, '').slice(0, 4);
+    L.push([seg(pad('hour', 6), 'lab'), ...hours.map((h) => seg(lpad(h12(h.time), 4), 'dim'))]);
+    L.push([seg(pad('temp', 6), 'lab'), ...hours.map((h) => seg(lpad(`${Math.round(h.temp)}°`, 4), 'hi'))]);
+    L.push([seg(pad('rain', 6), 'lab'), ...hours.map((h) => seg(lpad(`${h.rainChance ?? 0}%`, 4), (h.rainChance ?? 0) >= 50 ? 'acc' : 'dim'))]);
+  }
+  L.push([]);
+  L.push([seg(pad('day', 7), 'lab'), seg(pad('sky', 19), 'lab'), seg(lpad('max', 5), 'lab'), seg(lpad('min', 5), 'lab'), seg(lpad('rain', 6), 'lab'), seg(lpad('uv', 4), 'lab')]);
+  (w.days || []).slice(0, 4).forEach((d, i) => {
+    const day = i === 0 ? 'today' : new Date(d.date + 'T12:00').toLocaleDateString(lang, { weekday: 'short' }).toLowerCase();
+    L.push([seg(pad(day, 7), i === 0 ? 'hi' : ''), seg(pad(clip(String(d.description || '').toLowerCase(), 18), 19), 'dim'), seg(lpad(`${Math.round(d.max)}°`, 5), 'hi'), seg(lpad(`${Math.round(d.min)}°`, 5)),
+      seg(lpad(`${d.rainChance ?? '—'}%`, 6), d.rainChance >= 60 ? 'acc' : ''), seg(lpad(d.uvMax != null ? Math.round(d.uvMax) : '—', 4), uvCls(d.uvMax))]);
+  });
+  if (o.showSun) {
+    const now = new Date();
+    const today = (w.days || [])[0] || {};
+    const hm = (iso) => (iso ? new Date(iso).toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit', hour12: !o.format24 }) : '—');
+    const ss = today.sunset ? new Date(today.sunset) : null, sr = today.sunrise ? new Date(today.sunrise) : null;
+    let light = '';
+    if (sr && ss) { const left = (ss - now) / 60000; light = now < sr ? 'before sunrise' : left > 0 ? `${Math.floor(left / 60)}h${String(Math.round(left % 60)).padStart(2, '0')} light left` : 'after sunset'; }
+    const syn = 29.530588853, age = ((((now.getTime() / 86400000) - Date.UTC(2000, 0, 6, 18, 14) / 86400000) % syn) + syn) % syn;
+    const names = ['new moon', 'waxing crescent', 'first quarter', 'waxing gibbous', 'full moon', 'waning gibbous', 'last quarter', 'waning crescent'];
+    L.push([]);
+    L.push([seg('sun  ', 'lab'), seg(`↑ ${hm(today.sunrise)}  ↓ ${hm(today.sunset)}  `, 'hi'), seg(light, 'dim')]);
+    L.push([seg('moon ', 'lab'), seg(`${names[Math.floor((age / syn) * 8 + 0.5) % 8]} · ${Math.round((1 - Math.cos((2 * Math.PI * age) / syn)) / 2 * 100)}% lit`, 'dim')]);
+  }
+  return L;
+}
+
+// ---------------------------------------------------------------- render
+function render() {
+  const user = String(o.operator || 'operator').replace(/[^\w.-]/g, '').toLowerCase() || 'operator';
+  const host = (s?.host || 'wallgates').toLowerCase();
+  paint('cmd', [[seg(`${user}@${host}`, 'acc'), seg(':', 'dim'), seg('~', 'lab'), seg('$ ', 'dim'), seg(typed, 'hi'), ...(typingDone ? [] : [['', 'cursor']])]]);
+  const now = new Date();
+  $('clock').textContent = `${now.toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: !o.format24 })}   ${now.toLocaleDateString(lang, { weekday: 'short', day: '2-digit', month: 'short', year: 'numeric' })}`;
+  $('grid').classList.toggle('hidden', !typingDone);
+  if (!typingDone) return fit();
+  if (!s) { paint('cpu', [[seg('collecting system data…', 'dim')]]); return fit(); }
+
+  paint('cpu', cpuPanel());
+  paint('mem', memPanel());
+  paint('disk', diskPanel());
+  paint('gpu', gpuPanel());
+  paint('proc', procPanel());
+  paint('net', netPanel());
+  paint('wx', wxPanel());
+  $('procBox').classList.toggle('hidden', !o.showProcs);
+  $('netBox').classList.toggle('hidden', !o.showNet);
+  $('wxBox').classList.toggle('hidden', !o.showWeather);
+
+  const up = s.uptime || 0;
+  const src = { 'wallgates-sensors': 'advanced sensors', hwinfo: 'HWiNFO', 'gpu-driver': 'driver', system: 'system' }[s.sources?.temperatures] || 'basic';
+  paint('status', [[seg(`up ${Math.floor(up / 86400)}d ${String(Math.floor(up % 86400 / 3600)).padStart(2, '0')}:${String(Math.floor(up % 3600 / 60)).padStart(2, '0')}`, 'dim'), seg('  ·  ', 'dim'), seg(`${String(s.os || '').replace(/\s*\(.*\)/, '')}`, 'dim'), seg('  ·  sensors: ', 'dim'), seg(src, 'acc')]]);
+  paint('music', o.showMedia && media?.title ? [[seg(`${media.playing ? '▶' : '❚❚'} `, 'acc'), seg(clip(media.title, 40), 'hi'), seg(media.artist ? ` — ${clip(media.artist, 30)}` : '', 'dim')]] : [[seg('♪ nothing playing', 'dim')]]);
   fit();
 }
 
-// Font size: the widest line must fit the window width, and every line must fit the screen height.
+// Fit: start from the size that fills the panel width, shrink until the window fits the screen height.
 function fit() {
   const win = $('win');
-  const width = win.clientWidth;
-  const count = $('out').textContent.split('\n').length + (o.titleBar ? 2 : 0) + 1;
-  const byWidth = (width - 24) / (COLS * 0.6);
-  const byHeight = (innerHeight * 0.93) / (count * 1.32);
-  const size = Math.max(7, Math.min(byWidth * (o.fontSize || 1), byHeight));
-  document.documentElement.style.setProperty('--fs', `${size.toFixed(2)}px`);
+  const colPx = (win.clientWidth - 40) / 2 - 28;
+  let fs = Math.max(8, Math.min(28, colPx / (COLW * 0.6))) * (o.fontSize || 1);
+  const maxH = innerHeight * 0.94;
+  for (let i = 0; i < 30; i++) {
+    document.documentElement.style.setProperty('--fs', `${fs.toFixed(2)}px`);
+    const overflowX = [...document.querySelectorAll('.box pre')].some((p) => p.scrollWidth > p.clientWidth + 1);
+    if (win.scrollHeight <= maxH && !overflowX) break;
+    fs *= 0.96;
+  }
 }
 
 function applyLook() {
-  const cls = [o.theme || 'cmd', `pos-${o.position || 'right'}`, `bg-${o.background || 'black'}`];
+  const cls = [o.theme || 'wallgates', `pos-${o.position || 'center'}`, `bg-${o.background || 'black'}`];
   if (Wallgates.paused) cls.push('paused');
   document.body.className = cls.join(' ');
-  document.documentElement.style.setProperty('--w', `${o.width || 42}vw`);
+  document.documentElement.style.setProperty('--w', `${Math.min(70, o.width || 66)}vw`);
   document.documentElement.style.setProperty('--op', o.opacity ?? 0.94);
-  $('title').style.display = o.titleBar === false ? 'none' : 'flex';
   render();
 }
 
 async function typeCommand() {
   const cmd = 'wallgates status --live';
-  $('titleText').textContent = `C:\\WINDOWS\\system32\\cmd.exe - ${cmd}`;
   if (!o.typing) { typed = cmd; typingDone = true; render(); return; }
-  await new Promise((r) => setTimeout(r, 600));
-  for (const ch of cmd) { typed += ch; render(); await new Promise((r) => setTimeout(r, 55 + Math.random() * 60)); }
-  await new Promise((r) => setTimeout(r, 350));
+  await new Promise((r) => setTimeout(r, 500));
+  for (const ch of cmd) { typed += ch; render(); await new Promise((r) => setTimeout(r, 50 + Math.random() * 55)); }
+  await new Promise((r) => setTimeout(r, 300));
   typingDone = true;
   render();
 }
@@ -248,13 +312,12 @@ Wallgates.on('properties', (v) => { o = v; applyLook(); if (!started) { started 
 Wallgates.on('pause', () => applyLook());
 Wallgates.on('system', (d) => {
   s = d;
-  const sys = (d.drives || []).find((x) => /C:/i.test(x.letters || '')) || (d.drives || [])[0] || {};
-  push(hist.cpu, d.cpu); push(hist.gpu, d.gpu?.usage); push(hist.ram, d.memory); push(hist.ssd, sys.active);
+  push(hist.cpu, d.cpu); push(hist.gpu, d.gpu?.usage); push(hist.ram, d.memory); push(hist.rx, d.net?.rx); push(hist.tx, d.net?.tx);
   if (!Wallgates.paused && typingDone) render();
 });
 Wallgates.on('weather', (d) => { w = d; if (typingDone) render(); });
 Wallgates.on('media', (m) => { media = m; if (typingDone) render(); });
-setInterval(() => { if (!Wallgates.paused && typingDone) render(); }, 1000);
+setInterval(() => { if (!Wallgates.paused) render(); }, 1000);
 addEventListener('resize', fit);
 </script>
 </body>

@@ -1,12 +1,12 @@
 {
   "name": "System Terminal",
   "author": "Wallgates",
-  "description": "A clean command-prompt window with every nerd stat: CPU, GPU, RAM and SSD load and temperatures, top processes, network, fans, weather with UV and a 3-day forecast, sun and moon. Sits where you want it, without taking the whole screen.",
+  "description": "A terminal-style system monitor: CPU with every core, GPU, memory and every drive with load and temperatures, top processes, network and fans, weather with UV, air quality, hourly and 4-day forecast, sun, moon and music. Clean text, no effects, up to 70% of the screen.",
   "type": "html",
   "entry": "index.html",
   "preview": "preview.jpg",
   "license": "CC-BY-4.0",
-  "version": "3.0.0",
+  "version": "4.0.0",
   "tags": [
     "system",
     "monitor",
@@ -29,15 +29,15 @@
     "theme": {
       "label": "Theme",
       "type": "select",
-      "default": "cmd",
+      "default": "wallgates",
       "options": [
         {
           "value": "cmd",
-          "label": "Command Prompt (grey on black)"
+          "label": "Terminal grey"
         },
         {
           "value": "powershell",
-          "label": "PowerShell (blue)"
+          "label": "PowerShell blue"
         },
         {
           "value": "wallgates",
@@ -56,7 +56,7 @@
     "position": {
       "label": "Position",
       "type": "select",
-      "default": "right",
+      "default": "center",
       "options": [
         {
           "value": "right",
@@ -91,10 +91,10 @@
     "width": {
       "label": "Window width (% of screen)",
       "type": "slider",
-      "min": 28,
-      "max": 80,
+      "min": 40,
+      "max": 70,
       "step": 1,
-      "default": 42
+      "default": 66
     },
     "fontSize": {
       "label": "Text size",
@@ -166,6 +166,16 @@
     },
     "showProcs": {
       "label": "Top processes",
+      "type": "bool",
+      "default": true
+    },
+    "showCores": {
+      "label": "Per-core CPU load",
+      "type": "bool",
+      "default": true
+    },
+    "showDisks": {
+      "label": "All drives & volumes",
       "type": "bool",
       "default": true
     },

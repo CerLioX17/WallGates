@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.7.0
+**System Terminal 4.0 — a bigger, more detailed terminal monitor.**
+- Now a two-column, btop-style panel layout using up to 70% of the screen width (default 66%,
+  centered), with larger text that scales to fit 16:9, 16:10 and 21:9 screens.
+- CPU: load, temperature, frequency, power, process count, load history and per-core load bars.
+- Memory: RAM/swap meters, RAM temperature (or "no sensor"), used/free/total, top memory user.
+- Storage: every SSD with model, temperature, activity and read/write speed, plus volume usage.
+- GPU: load, temperature, VRAM, hotspot, fan, power and history. Top-5 processes with CPU bars.
+- Network rates with history, all fans, and weather: 12-hour temperature/rain strip, UV, air
+  quality, 4-day forecast, sunrise/sunset and moon phase.
+- New options: per-core CPU load and all drives & volumes. Themes: Terminal grey, PowerShell,
+  Wallgates, green, amber.
+
 ## 0.6.0
 **System Terminal 3.0 — a real command prompt.**
 - Redesigned as a plain console window (Command Prompt, PowerShell, Wallgates, green or amber

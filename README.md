@@ -44,7 +44,7 @@ Wallgates was designed from the most common complaints about existing wallpaper 
 - **Audio-reactive**: system audio spectrum (what you hear, not the microphone) for shaders and web wallpapers.
 - **Interactive**: cursor parallax, now playing (Spotify, browsers, any media app), weather (Open-Meteo, no key).
 - **Market Terminal**: your ISIN watchlist and portfolio with live P/L, intraday charts, index tape and world market clocks.
-- **System Terminal**: CPU, GPU, RAM and SSD load and temperatures, top processes, weather with UV and a 3-day forecast, on a retro CRT terminal.
+- **System Terminal**: CPU, GPU, RAM and SSD load and temperatures, top processes, network, fans and weather with UV and a 4-day forecast, in a clean terminal-style monitor.
 - **Advanced sensors built in**: one click in Settings adds CPU/RAM temperatures and fans (LibreHardwareMonitor + PawnIO). Nothing else to install, and uninstalling Wallgates removes it too.
 - **Performance controls**: frame cap, render quality (great on 4K), eco mode, per-app rules (`game.exe → Unload`), mute unless the desktop is in front.
 - **Create & share**: built-in live code editor, templates, `.wallgates` packages (double-click to install), curated online gallery.
