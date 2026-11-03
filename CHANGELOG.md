@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.10.2
+**Trade Republic Portfolio: daily changes from Trade Republic's own venue.**
+- Live prices now come from the **Lang & Schwarz Exchange** (through onvista), the venue Trade Republic trades on,
+  and "today" is measured against LS's own previous close — the same reference the Trade Republic app uses.
+  Previously Xetra prices (closed after 17:30, 15 min delay) were compared with a Yahoo "previous close" field that
+  is unreliable on some listings, which produced wrong signs on US-heavy ETFs in the evening.
+- When Yahoo is used, the daily reference is the last completed daily close from the price history.
+- New **Live prices** option (Lang & Schwarz · Tradegate · gettex · Yahoo) and a **Per-instrument source** list
+  (`ISIN venue` or `ISIN YAHOO.SYMBOL`) to choose the venue of each holding yourself — no reinstall needed.
+- The status bar shows how many holdings use each source; each holding shows its own source.
+
 ## 0.10.1
 **Trade Republic Portfolio: correct daily changes, bonds and private markets.**
 - Daily % now matches what a euro investor sees: instruments resolve to **EUR listings** (Xetra, Frankfurt,

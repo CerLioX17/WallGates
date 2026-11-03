@@ -21,6 +21,9 @@ fn market_exchanges(market: &str) -> (&'static [&'static str], &'static str) {
         "milan" => (&["MIL"], ".MI"),
         "xetra" => (&["GER"], ".DE"),
         "frankfurt" => (&["FRA"], ".F"),
+        "stuttgart" => (&["STU"], ".SG"),
+        "munich" => (&["MUN"], ".MU"),
+        "berlin" => (&["BER"], ".BE"),
         "paris" => (&["PAR"], ".PA"),
         "amsterdam" => (&["AMS"], ".AS"),
         "london" => (&["LSE"], ".L"),
@@ -58,6 +61,29 @@ pub struct Request {
     pub refresh_secs: u64,
     /// Also fetch ~2 years of daily closes (portfolio performance over time).
     pub history: bool,
+    /// Live price source: "ls" = Lang & Schwarz Exchange through onvista (what Trade Republic shows),
+    /// "tradegate", "gettex", or "yahoo".
+    pub source: String,
+    /// Per-instrument choice (`listings` property): id → venue keyword (xetra, frankfurt, ls, tradegate…) or Yahoo symbol.
+    pub listings: std::collections::BTreeMap<String, String>,
+}
+
+/// Venue keywords understood in the `listings` property and the `priceSource` option.
+pub fn is_onvista_venue(v: &str) -> bool {
+    matches!(v, "ls" | "lang" | "lsx" | "tradegate" | "gettex")
+}
+
+/// Parse `listings` lines: `ISIN venue-or-symbol` (`#` comments allowed).
+pub fn parse_listings(text: &str) -> std::collections::BTreeMap<String, String> {
+    text.lines()
+        .filter_map(|l| {
+            let l = l.split('#').next().unwrap_or("");
+            let mut it = l.split(|c: char| c.is_whitespace() || c == ';' || c == '=' || c == ',').filter(|t| !t.is_empty());
+            let id = it.next()?.trim().to_ascii_uppercase();
+            let spec = it.next()?.trim().to_string();
+            Some((id, spec))
+        })
+        .collect()
 }
 
 /// Split one CSV line, honouring double quotes ("a,b" and "" escapes).
@@ -127,6 +153,11 @@ pub fn request_from(values: &Map<String, Value>) -> Request {
     let ids: BTreeSet<String> = ids.into_iter().take(80).collect();
     Request {
         history: !tr.trim().is_empty() || values.get("history").and_then(Value::as_bool).unwrap_or(false),
+        source: {
+            let v = s("priceSource").trim().to_ascii_lowercase();
+            if v.is_empty() { if tr.trim().is_empty() { "yahoo".into() } else { "ls".into() } } else { v }
+        },
+        listings: parse_listings(s("listings")),
         ids,
         market: s("market").to_ascii_lowercase(),
         currency: {
@@ -262,9 +293,54 @@ fn find_quote(v: &Value) -> Option<&Map<String, Value>> {
     }
 }
 
-/// Normalise an onvista snapshot into a quote (used for ISINs Yahoo doesn't list: turbos, warrants, certificates).
+/// Every quote block (object with a numeric `last`) in an onvista snapshot, e.g. one per trading venue.
+fn all_quotes<'a>(v: &'a Value, out: &mut Vec<&'a Map<String, Value>>) {
+    match v {
+        Value::Object(m) => {
+            if m.get("last").and_then(Value::as_f64).is_some() {
+                out.push(m);
+            }
+            for x in m.values() {
+                all_quotes(x, out);
+            }
+        }
+        Value::Array(a) => a.iter().for_each(|x| all_quotes(x, out)),
+        _ => {}
+    }
+}
+
+/// Venue names onvista uses, for each keyword.
+fn venue_names(venue: &str) -> &'static [&'static str] {
+    match venue {
+        "tradegate" => &["tradegate"],
+        "gettex" => &["gettex"],
+        "ls" | "lang" | "lsx" => &["lang & schwarz", "ls exchange", "l&s", "lang und schwarz", "lsx"],
+        _ => &[],
+    }
+}
+
+/// Normalise an onvista snapshot into a quote, preferring the requested venue
+/// ("ls" = Lang & Schwarz Exchange, Trade Republic's venue; its previous close is Trade Republic's reference).
+pub fn parse_onvista_venue(id: &str, snap: &Value, venue: &str) -> Option<Value> {
+    let mut list = Vec::new();
+    all_quotes(snap, &mut list);
+    let market_name = |q: &Map<String, Value>| {
+        q.get("market").map(|m| format!("{} {} {}",
+            m.get("name").and_then(Value::as_str).unwrap_or(""), m.get("nameExchange").and_then(Value::as_str).unwrap_or(""),
+            m.get("codeExchange").and_then(Value::as_str).unwrap_or("")).to_lowercase()).unwrap_or_default()
+    };
+    let names = venue_names(venue);
+    let q = list.iter().copied().find(|q| { let n = market_name(q); names.iter().any(|x| n.contains(x)) })
+        .or_else(|| find_quote(snap))?;
+    parse_onvista_quote(id, snap, q)
+}
+
+#[cfg_attr(not(test), allow(dead_code))]
 pub fn parse_onvista(id: &str, snap: &Value) -> Option<Value> {
-    let q = find_quote(snap)?;
+    parse_onvista_venue(id, snap, "")
+}
+
+fn parse_onvista_quote(id: &str, snap: &Value, q: &Map<String, Value>) -> Option<Value> {
     let price = q.get("last").and_then(Value::as_f64)?;
     let prev = q.get("previousLast").or_else(|| q.get("previousClose")).and_then(Value::as_f64).unwrap_or(price);
     let name = snap.pointer("/instrument/name").or_else(|| snap.get("name")).cloned().unwrap_or_else(|| json!(id));
@@ -275,7 +351,7 @@ pub fn parse_onvista(id: &str, snap: &Value) -> Option<Value> {
         "currency": q.get("isoCurrency").and_then(Value::as_str).unwrap_or("EUR"),
         "price": price, "previousClose": prev, "change": change,
         "changePct": if prev != 0.0 { change / prev * 100.0 } else { 0.0 },
-        "time": q.get("datetimeLast"), "state": "closed", "spark": [], "source": "onvista",
+        "time": q.get("datetimeLast"), "previousTime": q.get("datetimePreviousLast"), "state": "closed", "spark": [], "source": "onvista",
     }))
 }
 
@@ -347,6 +423,32 @@ impl Markets {
 
     /// Fallback for instruments without a Yahoo listing, through onvista's public JSON API.
     fn onvista(agent: &ureq::Agent, isin: &str) -> Result<Value, String> {
+        Self::onvista_venue(agent, isin, "")
+    }
+
+    fn onvista_venue(agent: &ureq::Agent, isin: &str, venue: &str) -> Result<Value, String> {
+        // ISIN → (entityType, entityValue) never changes: look it up once per session.
+        static IDS: std::sync::OnceLock<std::sync::Mutex<HashMap<String, (String, String)>>> = std::sync::OnceLock::new();
+        let ids = IDS.get_or_init(Default::default);
+        let cached = ids.lock().ok().and_then(|m| m.get(isin).cloned());
+        let (kind, value) = match cached {
+            Some(kv) => kv,
+            None => {
+                let kv = Self::onvista_lookup(agent, isin)?;
+                if let Ok(mut m) = ids.lock() { m.insert(isin.to_string(), kv.clone()); }
+                kv
+            }
+        };
+        let snap: Value = agent
+            .get(&format!("https://api.onvista.de/api/v1/instruments/{kind}/{value}/snapshot"))
+            .call()
+            .map_err(|e| e.to_string())?
+            .into_json()
+            .map_err(|e| e.to_string())?;
+        parse_onvista_venue(isin, &snap, venue).ok_or_else(|| format!("{isin}: no data"))
+    }
+
+    fn onvista_lookup(agent: &ureq::Agent, isin: &str) -> Result<(String, String), String> {
         let search: Value = agent
             .get("https://api.onvista.de/api/v1/instruments/search/facet")
             .query("searchValue", isin)
@@ -366,13 +468,7 @@ impl Markets {
         let (Some(kind), Some(value)) = (hit.get("entityType").and_then(Value::as_str), hit.get("entityValue").and_then(Value::as_str)) else {
             return Err(format!("{isin}: not found"));
         };
-        let snap: Value = agent
-            .get(&format!("https://api.onvista.de/api/v1/instruments/{kind}/{value}/snapshot"))
-            .call()
-            .map_err(|e| e.to_string())?
-            .into_json()
-            .map_err(|e| e.to_string())?;
-        parse_onvista(isin, &snap).ok_or_else(|| format!("{isin}: no data"))
+        Ok((kind.to_string(), value.to_string()))
     }
 
     fn daily(&mut self, agent: &ureq::Agent, symbol: &str) -> Value {
@@ -402,18 +498,33 @@ impl Markets {
         for req in requests {
             bases.insert(req.currency.clone());
             for id in &req.ids {
-                if !done.insert(format!("{id}|{}", req.market)) {
+                // Per-instrument choice beats the global one: a venue keyword or an explicit Yahoo symbol.
+                let spec = req.listings.get(id).map(|s| s.trim().to_string()).unwrap_or_default();
+                let spec_l = spec.to_ascii_lowercase();
+                let venue = if is_onvista_venue(&spec_l) { spec_l.clone() }
+                    else if spec.is_empty() && is_onvista_venue(&req.source) { req.source.clone() } else { String::new() };
+                let (market, symbol_override) = if spec.is_empty() || is_onvista_venue(&spec_l) { (req.market.clone(), None) }
+                    else if market_exchanges(&spec_l).0.is_empty() { (req.market.clone(), Some(spec.clone())) }
+                    else { (spec_l.clone(), None) };
+                if !done.insert(format!("{id}|{market}|{venue}|{spec}")) {
                     continue;
                 }
-                let result = self
-                    .resolve(&agent, id, &req.market)
+                let yahoo_symbol = match &symbol_override { Some(s) => Ok(s.clone()), None => self.resolve(&agent, id, &market) };
+                let yahoo = |sym: &Result<String, String>| sym.clone()
                     .and_then(|sym| Self::chart(&agent, &sym))
-                    .and_then(|c| parse_chart(id, &c).ok_or_else(|| format!("{id}: no data")))
-                    .or_else(|e| if is_isin(id) { Self::onvista(&agent, id).map_err(|_| e) } else { Err(e) });
+                    .and_then(|c| parse_chart(id, &c).ok_or_else(|| format!("{id}: no data")));
+                let result = if !venue.is_empty() && is_isin(id) {
+                    // Live price from the chosen venue; Yahoo only as a fallback.
+                    Self::onvista_venue(&agent, id, &venue).or_else(|e| yahoo(&yahoo_symbol).map_err(|_| e))
+                } else {
+                    yahoo(&yahoo_symbol).or_else(|e| if is_isin(id) { Self::onvista(&agent, id).map_err(|_| e) } else { Err(e) })
+                };
                 let result = result.map(|mut q| {
-                    if req.history && q.get("source").is_none() {
-                        if let Some(sym) = q.get("symbol").and_then(Value::as_str).map(str::to_string) {
-                            q["history"] = self.daily(&agent, &sym);
+                    // Daily history always comes from the Yahoo listing (weeks/months/years: venue differences are tiny).
+                    if req.history {
+                        if let Ok(sym) = &yahoo_symbol {
+                            q["history"] = self.daily(&agent, sym);
+                            q["historySymbol"] = json!(sym);
                         }
                     }
                     q
@@ -506,6 +617,26 @@ mod tests {
         assert!(r.history && r.ids.contains("XRP-EUR"));
         let h = parse_history(&json!({ "chart": { "result": [{ "timestamp": [1, 2, 3], "indicators": { "quote": [{ "close": [10.0, null, 12.5] }] } }] } }));
         assert_eq!(h, json!([[1, 10.0], [3, 12.5]]));
+    }
+
+    #[test]
+    fn picks_lang_schwarz_venue_and_listing_overrides() {
+        let snap = json!({ "instrument": { "name": "Take-Two" }, "quote": { "last": 210.0, "previousLast": 208.0, "isoCurrency": "EUR", "market": { "name": "Xetra" } },
+            "quoteList": { "list": [
+                { "last": 210.1, "previousLast": 209.0, "isoCurrency": "EUR", "market": { "name": "Tradegate" } },
+                { "last": 210.4, "previousLast": 209.04, "isoCurrency": "EUR", "market": { "name": "Lang & Schwarz" } } ] } });
+        let q = parse_onvista_venue("US8740541094", &snap, "ls").unwrap();
+        assert_eq!(q["price"], json!(210.4));
+        assert_eq!(q["exchange"], json!("Lang & Schwarz"));
+        assert_eq!(parse_onvista_venue("X", &snap, "tradegate").unwrap()["price"], json!(210.1));
+        assert_eq!(parse_onvista_venue("X", &snap, "").unwrap()["price"], json!(210.0));
+        let l = parse_listings("IE00B4L5Y983 EUNL.DE # iShares\nus8740541094=tradegate\n\nbad");
+        assert_eq!(l.get("IE00B4L5Y983").map(String::as_str), Some("EUNL.DE"));
+        assert_eq!(l.get("US8740541094").map(String::as_str), Some("tradegate"));
+        assert_eq!(l.len(), 2);
+        let v: Map<String, Value> = serde_json::from_value(json!({ "tradeRepublicCsv": "symbol,asset_class\nIE00B4L5Y983,FUND\n" })).unwrap();
+        assert_eq!(request_from(&v).source, "ls");
+        assert_eq!(request_from(&Map::new()).source, "yahoo");
     }
 
     #[test]

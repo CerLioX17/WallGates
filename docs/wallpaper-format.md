@@ -106,6 +106,8 @@ Wallpapers with the `markets` capability declare their instruments in these prop
 | `currency` | base currency for FX rates (e.g. `EUR`) |
 | `refresh` | seconds between updates (min 15) |
 | `tradeRepublicCsv` | a Trade Republic CSV export (`file` property): its ISINs and crypto are quoted, with daily history |
+| `priceSource` | live prices: `ls` (Lang & Schwarz Exchange, via onvista), `tradegate`, `gettex` or `yahoo` |
+| `listings` | per instrument, one per line: `ISIN venue` (`ls`, `tradegate`, `xetra`, `frankfurt`, …) or `ISIN YAHOO.SYMBOL` |
 | `history` | `true` to also receive ~2 years of daily closes per instrument (`history: [[unix, close], …]`) |
 
 `Wallgates.on('markets', d => ...)` receives `quotes[]` (`id`, `symbol`, `name`, `exchange`, `currency`,

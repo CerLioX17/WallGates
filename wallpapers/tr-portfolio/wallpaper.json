@@ -6,7 +6,7 @@
   "entry": "index.html",
   "preview": "preview.jpg",
   "license": "CC-BY-4.0",
-  "version": "1.2.0",
+  "version": "1.3.0",
   "tags": [
     "finance",
     "portfolio",
@@ -49,8 +49,31 @@
         }
       ]
     },
+    "priceSource": {
+      "label": "Live prices",
+      "type": "select",
+      "default": "ls",
+      "options": [
+        {
+          "value": "ls",
+          "label": "Lang & Schwarz Exchange — same as Trade Republic"
+        },
+        {
+          "value": "tradegate",
+          "label": "Tradegate"
+        },
+        {
+          "value": "gettex",
+          "label": "gettex"
+        },
+        {
+          "value": "yahoo",
+          "label": "Yahoo Finance (listing below)"
+        }
+      ]
+    },
     "market": {
-      "label": "Price listing",
+      "label": "Listing for history (and Yahoo prices)",
       "type": "select",
       "default": "xetra",
       "options": [
@@ -94,6 +117,17 @@
       "max": 600,
       "step": 10,
       "default": 60
+    },
+    "listings": {
+      "label": "Per-instrument source (one per line: ISIN venue or Yahoo symbol)",
+      "type": "textarea",
+      "rows": 4,
+      "default": "",
+      "placeholder": "US8740541094 tradegate\nIE00B4L5Y983 EUNL.DE\nIE00BKM4GZ66 xetra"
+    },
+    "n2": {
+      "label": "Venues: ls, tradegate, gettex, xetra, frankfurt, stuttgart, munich, milan, paris, amsterdam — or a Yahoo symbol such as EUNL.DE. Each holding shows the source it uses under its name.",
+      "type": "note"
     },
     "priceOverrides": {
       "label": "Manual prices (one per line: ISIN price)",

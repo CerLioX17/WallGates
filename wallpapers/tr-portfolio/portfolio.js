@@ -192,15 +192,26 @@
     const r = mk?.fxPrev?.[`${c}${cur()}`] ?? mk?.fx?.[`${c}${cur()}`];
     return r ? r * k : k;
   };
+  // Close of the last completed day before today, from daily history (in the quote's currency), or null.
+  function lastClose(q) {
+    const h = q?.history; if (!h?.length) return null;
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    for (let i = h.length - 1; i >= 0; i--) if (h[i][0] * 1000 < today.getTime()) return h[i][1];
+    return null;
+  }
   function dayRef(p) {
     if (overrides[p.isin] != null || p.kind === 'private') return null;
     const q = quoteOf(p.id);
-    if (!q || q.price == null || q.previousClose == null) return null;
+    if (!q || q.price == null) return null;
     const f = p.factor || 1, now = q.price * fxTo(q.currency) * f;
     const t = q.time == null ? null : new Date(typeof q.time === 'number' ? q.time * 1000 : q.time);
     const sessionToday = q.state === 'open' || (t && !isNaN(t) && t.toDateString() === new Date().toDateString());
     if (!sessionToday) return { now, prev: now };
-    return { now, prev: q.previousClose * fxPrevTo(q.currency) * f };
+    // Lang & Schwarz / Tradegate (onvista): the venue's own previous close — exactly Trade Republic's reference.
+    // Yahoo: the last completed daily close (its "previous close" field is unreliable on some listings).
+    const prevRaw = q.source === 'onvista' ? q.previousClose : lastClose(q) ?? q.previousClose;
+    if (prevRaw == null) return null;
+    return { now, prev: prevRaw * fxPrevTo(q.currency) * f };
   }
   function dayGain() {
     let g = 0, base = 0;
@@ -461,7 +472,9 @@
     if (o.showActivity !== false && !compact) activityPanel();
     if (compact) tapePanel(rows);
     const noQuote = Object.values(book.pos).filter((p) => p.shares > 1e-9 && !quoteOf(p.id) && overrides[p.isin] == null).length;
-    $('status').innerHTML = mk ? `<span class="dot open"></span>LIVE · ${qs.length} quotes` : '<span class="dot"></span>WAITING FOR PRICES…';
+    const bySrc = {};
+    for (const q of qs) { const k = q.source === 'onvista' ? (q.exchange || 'onvista') : `Yahoo ${q.exchange || ''}`.trim(); bySrc[k] = (bySrc[k] || 0) + 1; }
+    $('status').innerHTML = mk ? `<span class="dot open"></span>LIVE · ${Object.entries(bySrc).map(([k, n]) => `${n} ${esc(k)}`).join(' · ')}` : '<span class="dot"></span>WAITING FOR PRICES…';
     $('errs').textContent = [noQuote ? `◆ ${noQuote} without public quote — valued at last trade price (add it under Manual prices)` : '', missingFx.size ? `FX rate missing for ${[...missingFx].join(', ')}` : ''].filter(Boolean).join(' · ');
     fit();
     if (o.showChart !== false) chartPanel();
