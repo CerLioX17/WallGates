@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.10.1
+**Trade Republic Portfolio: correct daily changes, bonds and private markets.**
+- Daily % now matches what a euro investor sees: instruments resolve to **EUR listings** (Xetra, Frankfurt,
+  Stuttgart, Munich, … then Euronext) instead of a USD or GBP line. Previously e.g. Take-Two used the US listing,
+  so "today" was the US session move in dollars.
+- Daily changes are **FX-aware** (yesterday's price at yesterday's rate) when only a foreign listing exists.
+- "Today" only counts the current session: before a market opens or at weekends a position shows 0, not
+  yesterday's move.
+- Symbol cache rebuilt automatically (old cached USD listings are dropped).
+- **Bonds (reddito fisso)**: priced in % of nominal (shown as e.g. 99.10%), coupons counted as income,
+  repayments at maturity handled as sales, "Bonds" in the allocation.
+- **Private markets (ELTIF)**: valued at the latest NAV, excluded from the daily move, shown as
+  "Private markets" in the allocation.
+
 ## 0.10.0
 **New default wallpaper: Violet Flow.** A liquid violet marble photograph brought to life: the waves flow along
 their own lines (WebGL2 flow map), glowing contours drift across the surface, it follows the cursor and pulses with

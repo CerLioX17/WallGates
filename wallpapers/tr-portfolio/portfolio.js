@@ -22,7 +22,7 @@
   const nf = (d) => new Intl.NumberFormat(lang, { minimumFractionDigits: d, maximumFractionDigits: d });
   const money = (v, d = 2) => (v == null || !isFinite(v) ? '—' : o.privacy ? '•••••' : new Intl.NumberFormat(lang, { style: 'currency', currency: cur(), minimumFractionDigits: d, maximumFractionDigits: d }).format(v));
   const smoney = (v, d = 2) => (v == null || !isFinite(v) ? '—' : o.privacy ? '•••' : (v > 0 ? '+' : v < 0 ? '−' : '') + money(Math.abs(v), d));
-  const spct = (v, d = 2) => (v == null || !isFinite(v) ? '—' : (v > 0 ? '+' : v < 0 ? '−' : '') + nf(d).format(Math.abs(v)) + '%');
+  const spct = (v, d = 2) => (v == null || !isFinite(v) ? '' : (v > 0 ? '+' : v < 0 ? '−' : '') + nf(d).format(Math.abs(v)) + '%');
   const cls = (v) => (v > 0.004 ? 'up' : v < -0.004 ? 'dn' : '');
   const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const num = (s) => { const v = parseFloat(String(s ?? '').trim()); return isFinite(v) ? v : 0; };
@@ -51,22 +51,34 @@
       .filter((r) => isFinite(r.t))
       .sort((a, b) => a.t - b.t);
   }
+  // Instrument kind from the export (asset_class / name): stock, fund (ETF), crypto, derivative, bond, private (ELTIF).
+  const kindOf = (r) => {
+    const c = String(r.asset_class || '').toUpperCase(), n = `${r.name || ''} ${r.description || ''}`;
+    if (/PRIVATE|ELTIF/.test(c) || /\bELTIF\b|private (equity|markets?|credit)/i.test(n)) return 'private';
+    if (/BOND|FIXED|RENTE/.test(c)) return 'bond';
+    return { STOCK: 'stock', FUND: 'fund', ETF: 'fund', CRYPTO: 'crypto', DERIVATIVE: 'derivative' }[c] || 'other';
+  };
   const idOf = (r) => (String(r.asset_class).toUpperCase() === 'CRYPTO' ? `${String(r.symbol).toUpperCase()}-EUR` : String(r.symbol || '').toUpperCase());
 
   // Replay every transaction: positions, cost basis, cash, income and costs. Only amounts in EUR exist in the export.
   function buildBook(rows) {
     const pos = {}, flows = [], events = [];
-    let cash = 0, deposits = 0, withdrawals = 0, dividends = 0, interest = 0, fees = 0, taxes = 0, realized = 0;
+    let cash = 0, deposits = 0, withdrawals = 0, dividends = 0, interest = 0, coupons = 0, fees = 0, taxes = 0, realized = 0;
     for (const r of rows) {
       const amount = num(r.amount), fee = num(r.fee), tax = num(r.tax), shares = num(r.shares);
       const type = String(r.type).toUpperCase(), cat = String(r.category).toUpperCase();
       cash += amount + fee + tax;
       fees += fee; taxes += tax;
-      if (cat === 'TRADING' && r.symbol) {
+      // Anything that moves units of an instrument is a trade: buys/sells, savings plans, bond repayments at maturity.
+      const income = /DIVIDEND|INTEREST|COUPON|TAX|DISTRIBUTION/.test(type);
+      if (r.symbol && shares !== 0 && !income && (cat === 'TRADING' || /REPAY|REDEMPTION|MATURITY|SPLIT|SPIN|TRANSFER|SAVINGS|CORPORATE/.test(type))) {
         const id = idOf(r);
         const p = (pos[id] ||= { id, isin: r.symbol, name: r.name || r.symbol, cls: r.asset_class || '', shares: 0, cost: 0, realized: 0, lastPrice: 0, trades: [], first: r.t });
         p.name = (r.name || p.name).trim();
         if (num(r.price)) p.lastPrice = num(r.price);
+        p.kind = kindOf(r);
+        // Bonds are priced in % of nominal: 1,000 nominal at 98.5 is worth 985, not 98,500.
+        if (shares > 0 && num(r.price) > 0 && (p.kind === 'bond' || Math.abs(Math.abs(amount) - (shares * num(r.price)) / 100) < Math.abs(amount) * 0.03)) p.factor = 0.01;
         if (shares > 0) { p.cost += -amount - fee; p.shares += shares; }
         else if (shares < 0) {
           const avg = p.shares > 0 ? p.cost / p.shares : 0, sold = Math.min(-shares, p.shares);
@@ -80,7 +92,10 @@
         flows.push({ t: r.t, v: amount });
         if (amount >= 0) deposits += amount; else withdrawals += -amount;
         events.push({ t: r.t, kind: amount >= 0 ? 'in' : 'out', name: amount >= 0 ? 'Deposit' : 'Withdrawal', amount });
-      } else if (type === 'DIVIDEND') {
+      } else if (r.symbol && (type.includes('COUPON') || (type.startsWith('INTEREST') && kindOf(r) === 'bond'))) {
+        coupons += amount;
+        events.push({ t: r.t, kind: 'div', name: `Coupon · ${r.name || r.symbol}`, amount: amount + tax });
+      } else if (type === 'DIVIDEND' || type === 'DISTRIBUTION') {
         dividends += amount;
         events.push({ t: r.t, kind: 'div', name: `Dividend · ${r.name || r.symbol}`, amount: amount + tax });
       } else if (type.startsWith('INTEREST')) {
@@ -94,7 +109,7 @@
         if (amount < 0) withdrawals += -amount;
       }
     }
-    return { rows, pos, flows, events, cash, deposits, withdrawals, dividends, interest, fees, taxes, realized, first: rows[0]?.t ?? Date.now() };
+    return { rows, pos, flows, events, cash, deposits, withdrawals, dividends, interest, coupons, fees, taxes, realized, first: rows[0]?.t ?? Date.now() };
   }
 
   // ------------------------------------------------------------ prices
@@ -140,14 +155,14 @@
     for (const p of Object.values(book.pos)) {
       const sh = sharesAt(p, t);
       if (sh <= 1e-9) continue;
-      const px = priceAt(p, t) ?? (p.cost && p.shares ? p.cost / p.shares : p.lastPrice);
-      v += sh * px;
+      const px = priceAt(p, t) ?? (p.cost && p.shares ? p.cost / p.shares / (p.factor || 1) : p.lastPrice);
+      v += sh * px * (p.factor || 1);
     }
     return v + (o.includeCash !== false ? cashAt(t) : 0);
   }
   function valueNow() {
     let v = 0;
-    for (const p of Object.values(book.pos)) if (p.shares > 1e-9) v += p.shares * (priceNow(p) ?? p.lastPrice);
+    for (const p of Object.values(book.pos)) if (p.shares > 1e-9) v += p.shares * (priceNow(p) ?? p.lastPrice) * (p.factor || 1);
     return v + (o.includeCash !== false ? book.cash : 0);
   }
   // Gain over [t0, now] net of deposits/withdrawals, and a Modified-Dietz style percentage.
@@ -166,13 +181,33 @@
     const base = v0 + w;
     return { g, p: base > 1 ? (g / base) * 100 : null };
   }
+  // Today's move of one position in the base currency: {now, prev} values, or null when unknown.
+  // - only the current session counts: before a market opens (or at weekends) its move is 0, not yesterday's;
+  // - FX-aware: yesterday's price is converted at yesterday's rate (USD listings move with EUR/USD too);
+  // - private markets (monthly NAV) and manual prices have no daily move.
+  const fxPrevTo = (ccy) => {
+    if (!ccy) return 1;
+    const c = ccy === 'GBp' ? 'GBP' : ccy, k = ccy === 'GBp' ? 0.01 : 1;
+    if (c === cur()) return k;
+    const r = mk?.fxPrev?.[`${c}${cur()}`] ?? mk?.fx?.[`${c}${cur()}`];
+    return r ? r * k : k;
+  };
+  function dayRef(p) {
+    if (overrides[p.isin] != null || p.kind === 'private') return null;
+    const q = quoteOf(p.id);
+    if (!q || q.price == null || q.previousClose == null) return null;
+    const f = p.factor || 1, now = q.price * fxTo(q.currency) * f;
+    const t = q.time == null ? null : new Date(typeof q.time === 'number' ? q.time * 1000 : q.time);
+    const sessionToday = q.state === 'open' || (t && !isNaN(t) && t.toDateString() === new Date().toDateString());
+    if (!sessionToday) return { now, prev: now };
+    return { now, prev: q.previousClose * fxPrevTo(q.currency) * f };
+  }
   function dayGain() {
     let g = 0, base = 0;
     for (const p of Object.values(book.pos)) {
       if (p.shares <= 1e-9) continue;
-      const q = quoteOf(p.id); if (!q || q.previousClose == null) continue;
-      const k = fxTo(q.currency);
-      g += p.shares * (q.price - q.previousClose) * k; base += p.shares * q.previousClose * k;
+      const d = dayRef(p); if (!d) continue;
+      g += p.shares * (d.now - d.prev); base += p.shares * d.prev;
     }
     return { g, p: base ? (g / base) * 100 : null };
   }
@@ -227,12 +262,15 @@
     $('periods').innerHTML = P.map(([k, r, t0]) => `<div class="per ${cls(r.g)}"><span class="k">${k}</span><span class="v money">${smoney(r.g)}</span><span class="p">${spct(r.p)}</span>${t0 ? sparkSvg(series(Math.max(t0, book.first), 24)) : ''}</div>`).join('');
   }
 
+  // Bonds show their price as % of nominal, like in the Trade Republic app.
+  const pxFmt = (r) => (o.privacy ? '•••' : r.p.factor ? `${nf(2).format(r.px)}%` : money(r.px));
+
   function holdingRows() {
     return Object.values(book.pos).filter((p) => p.shares > 1e-9).map((p) => {
       const q = quoteOf(p.id), px = priceNow(p), manual = overrides[p.isin] != null;
-      const value = p.shares * (px ?? p.lastPrice);
-      const day = !manual && q && q.previousClose ? ((q.price - q.previousClose) / q.previousClose) * 100 : null;
-      const src = manual ? 'manual price' : q ? `${q.symbol || p.isin}${q.exchange ? ' · ' + q.exchange : ''}` : 'last trade price';
+      const value = p.shares * (px ?? p.lastPrice) * (p.factor || 1);
+      const d = dayRef(p), day = d && d.prev ? ((d.now - d.prev) / d.prev) * 100 : null;
+      const src = manual ? 'manual price' : p.kind === 'private' ? `private market · NAV${q?.time ? ' ' + new Date(typeof q.time === 'number' ? q.time * 1000 : q.time).toLocaleDateString(lang, { day: '2-digit', month: 'short' }) : ''}` : q ? `${q.symbol || p.isin}${q.exchange ? ' · ' + q.exchange : ''}` : 'last trade price';
       return { p, q, px: px ?? p.lastPrice, live: px != null, manual, value, pl: value - p.cost, plp: p.cost ? ((value - p.cost) / p.cost) * 100 : null, day, src };
     }).sort((x, y) => y.value - x.value);
   }
@@ -246,7 +284,7 @@
     let html;
     if (compact) {
       html = `<table class="ctab"><colgroup><col style="width:44%"><col style="width:20%"><col style="width:14%"><col style="width:22%"></colgroup>
-        ${rows.map((r) => `<tr><td><span class="nm">${esc(r.p.name)}</span>${flag(r)}<div class="tk">${esc(r.src)} · ${nf(r.p.shares < 10 ? 3 : 2).format(r.p.shares)} × ${o.privacy ? '•••' : money(r.px)}</div></td>
+        ${rows.map((r) => `<tr><td><span class="nm">${esc(r.p.name)}</span>${flag(r)}<div class="tk">${esc(r.src)} · ${nf(r.p.shares < 10 ? 3 : 2).format(r.p.shares)} × ${o.privacy ? '•••' : pxFmt(r)}</div></td>
           <td class="money">${money(r.value)}<div class="tk">${nf(1).format((r.value / tot) * 100)}%</div></td>
           <td class="${cls(r.day)}">${spct(r.day)}</td>
           <td class="${cls(r.pl)}"><span class="money">${smoney(r.pl)}</span><div class="tk ${cls(r.pl)}">${spct(r.plp, 1)}</div></td></tr>`).join('')}
@@ -256,7 +294,7 @@
       html = `<table><colgroup><col style="width:30%"><col style="width:9%"><col style="width:11%"><col style="width:13%"><col style="width:9%"><col style="width:15%"><col style="width:13%"></colgroup>
       <tr><th>Instrument</th><th>Shares</th><th>Price</th><th>Value</th><th>Today</th><th>Gain / loss</th><th>Weight</th></tr>
       ${rows.map((r) => `<tr><td><span class="nm">${esc(r.p.name)}</span><span class="tk">${esc(r.src)}</span>${flag(r)}</td>
-        <td>${nf(r.p.shares < 10 ? 3 : 2).format(r.p.shares)}</td><td class="money">${money(r.px)}</td><td class="money">${money(r.value)}</td>
+        <td>${nf(r.p.shares < 10 ? 3 : 2).format(r.p.shares)}</td><td class="money">${pxFmt(r)}</td><td class="money">${money(r.value)}</td>
         <td class="${cls(r.day)}">${spct(r.day)}</td><td class="${cls(r.pl)}"><span class="money">${smoney(r.pl)}</span> <span class="mute">${spct(r.plp, 1)}</span></td>
         <td><span class="w" style="width:${Math.max(2, (r.value / tot) * 60).toFixed(1)}%"></span>${nf(1).format((r.value / tot) * 100)}%</td></tr>`).join('')}
       ${o.showClosed !== false ? closed.slice(-4).map((p) => `<tr class="closed"><td>${esc(p.name)} <span class="tk">closed</span></td><td></td><td></td><td></td><td></td><td class="${cls(p.realized)}"><span class="money">${smoney(p.realized)}</span> <span class="mute">realised</span></td><td></td></tr>`).join('') : ''}
@@ -283,7 +321,7 @@
 
   // Bottom tape: every position with today's move, scrolling right to left.
   function tapePanel(rows) {
-    const items = rows.map((r) => `<span class="ti"><b>${esc(r.p.name)}</b> <span class="money">${money(r.px)}</span> <span class="${cls(r.day)}">${r.day == null ? '' : (r.day > 0 ? '▲ ' : r.day < 0 ? '▼ ' : '') + spct(r.day)}</span></span>`).join('<span class="sep">│</span>');
+    const items = rows.map((r) => `<span class="ti"><b>${esc(r.p.name)}</b> <span class="money">${pxFmt(r)}</span> <span class="${cls(r.day)}">${r.day == null ? '' : (r.day > 0 ? '▲ ' : r.day < 0 ? '▼ ' : '') + spct(r.day)}</span></span>`).join('<span class="sep">│</span>');
     const t = $('tapeInner');
     const html = items + '<span class="sep">│</span>' + items + '<span class="sep">│</span>';
     if (t.dataset.k !== html) { t.innerHTML = html; t.dataset.k = html; t.style.animationDuration = `${Math.max(40, rows.length * 7)}s`; }
@@ -291,8 +329,8 @@
 
   function allocPanel(rows) {
     const groups = {};
-    const label = (c) => ({ FUND: 'ETFs & funds', STOCK: 'Stocks', CRYPTO: 'Crypto', DERIVATIVE: 'Derivatives', BOND: 'Bonds' }[String(c).toUpperCase()] || 'Other');
-    for (const r of rows) groups[label(r.p.cls)] = (groups[label(r.p.cls)] || 0) + r.value;
+    const label = (c) => ({ fund: 'ETFs & funds', stock: 'Stocks', crypto: 'Crypto', derivative: 'Derivatives', bond: 'Bonds', private: 'Private markets' }[c] || 'Other');
+    for (const r of rows) groups[label(r.p.kind)] = (groups[label(r.p.kind)] || 0) + r.value;
     if (o.includeCash !== false && book.cash > 0.5) groups.Cash = book.cash;
     const items = Object.entries(groups).sort((a, b) => b[1] - a[1]);
     const tot = items.reduce((s, [, v]) => s + v, 0) || 1;
@@ -346,7 +384,7 @@
   function incomePanel() {
     const totalPL = Object.values(book.pos).reduce((s, p) => s + p.realized, 0);
     $('income').innerHTML = [
-      ['Dividends', book.dividends, 'up'], ['Interest', book.interest, 'up'], ['Realised gains', totalPL, cls(totalPL)],
+      ['Dividends', book.dividends, 'up'], ...(book.coupons ? [['Bond coupons', book.coupons, 'up']] : []), ['Interest', book.interest, 'up'], ['Realised gains', totalPL, cls(totalPL)],
       ['Fees', book.fees, 'dn'], ['Taxes', book.taxes, cls(book.taxes)],
     ].map(([k, v, c]) => `<div class="kv"><span>${k}</span><span class="${c} money">${smoney(v)}</span></div>`).join('');
   }

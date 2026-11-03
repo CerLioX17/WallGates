@@ -33,6 +33,13 @@ fn market_exchanges(market: &str) -> (&'static [&'static str], &'static str) {
     }
 }
 
+/// Euro-denominated venues on Yahoo Finance (exchange code, ticker suffix), most liquid / longest hours first.
+const EUR_LISTINGS: &[(&str, &str)] = &[
+    ("GER", ".DE"), ("FRA", ".F"), ("STU", ".SG"), ("MUN", ".MU"), ("BER", ".BE"), ("DUS", ".DU"), ("HAM", ".HM"),
+    ("HAN", ".HA"), ("MIL", ".MI"), ("AMS", ".AS"), ("PAR", ".PA"), ("MCE", ".MC"), ("BRU", ".BR"), ("VIE", ".VI"),
+    ("LIS", ".LS"), ("HEL", ".HE"), ("ISE", ".IR"),
+];
+
 pub fn is_isin(s: &str) -> bool {
     let b = s.as_bytes();
     b.len() == 12
@@ -149,6 +156,7 @@ pub fn pick_symbol(search: &Value, isin: &str, market: &str) -> Option<String> {
         .filter(|q| q.get("isYahooFinance").and_then(Value::as_bool).unwrap_or(true))
         .collect();
     let (exchanges, suffix) = market_exchanges(market);
+    let euro = matches!(market, "xetra" | "frankfurt" | "milan" | "paris" | "amsterdam" | "madrid" | "eur");
     fn exch<'a>(q: &&'a Value) -> &'a str {
         q.get("exchange").and_then(Value::as_str).unwrap_or("")
     }
@@ -159,6 +167,15 @@ pub fn pick_symbol(search: &Value, isin: &str, market: &str) -> Option<String> {
     if !suffix.is_empty() {
         if let Some(q) = usable.iter().find(|q| q["symbol"].as_str().unwrap().ends_with(suffix)) {
             return Some(sym(q));
+        }
+    }
+    // Euro investors (Trade Republic, Scalable, …): any EUR listing beats a USD/GBP one, so the price and its
+    // daily change are in euro. German venues first: they quote almost everything and trade until 22:00.
+    if euro {
+        for (code, sfx) in EUR_LISTINGS {
+            if let Some(q) = usable.iter().find(|q| exch(q) == *code || q["symbol"].as_str().unwrap().ends_with(sfx)) {
+                return Some(sym(q));
+            }
         }
     }
     // US securities: prefer the primary US listing.
@@ -278,7 +295,7 @@ pub fn parse_history(chart: &Value) -> Value {
 
 impl Markets {
     pub fn new(data_dir: &Path) -> Self {
-        let cache_file = data_dir.join("markets-symbols.json");
+        let cache_file = data_dir.join("markets-symbols-v2.json"); // v2: EUR-listing preference (v1 cached USD lines)
         let symbols = std::fs::read(&cache_file)
             .ok()
             .and_then(|b| serde_json::from_slice(&b).ok())
@@ -414,6 +431,7 @@ impl Markets {
         }
         // FX rates to each requested base currency (for portfolio totals).
         let mut fx = Map::new();
+        let mut fx_prev = Map::new();
         for base in &bases {
             for c in &currencies {
                 if c == base {
@@ -424,6 +442,10 @@ impl Markets {
                     if let Some(rate) = v.pointer("/chart/result/0/meta/regularMarketPrice").and_then(Value::as_f64) {
                         fx.insert(format!("{c}{base}"), json!(rate));
                     }
+                    // Yesterday's rate: lets wallpapers compute daily changes in the base currency.
+                    if let Some(prev) = v.pointer("/chart/result/0/meta/chartPreviousClose").and_then(Value::as_f64) {
+                        fx_prev.insert(format!("{c}{base}"), json!(prev));
+                    }
                 }
             }
         }
@@ -433,6 +455,7 @@ impl Markets {
             "source": "Yahoo Finance (delayed)",
             "quotes": quotes,
             "fx": fx,
+            "fxPrev": fx_prev,
             "errors": errors,
         })
     }
@@ -513,6 +536,12 @@ mod tests {
             { "symbol": "APC.F", "exchange": "FRA" }, { "symbol": "AAPL", "exchange": "NMS" }
         ]});
         assert_eq!(pick_symbol(&us, "US0378331005", "auto").as_deref(), Some("AAPL"));
+        // A US stock without a Xetra line: a euro investor gets the Frankfurt (EUR) listing, not the USD one.
+        assert_eq!(pick_symbol(&us, "US0378331005", "xetra").as_deref(), Some("APC.F"));
+        let stu = json!({ "quotes": [
+            { "symbol": "TTWO", "exchange": "NMS" }, { "symbol": "TKE.SG", "exchange": "STU" }, { "symbol": "TKE.F", "exchange": "FRA" }
+        ]});
+        assert_eq!(pick_symbol(&stu, "US8740541094", "xetra").as_deref(), Some("TKE.F"));
     }
 
     #[test]

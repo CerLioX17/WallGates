@@ -19,6 +19,7 @@ It tells you how the project is laid out, how to check your work, and the rules 
    ```
    Other agents: command = the Wallgates executable, args = `["--mcp"]`, transport = stdio.
    From a source checkout: `cargo run --manifest-path src-tauri/Cargo.toml -- --mcp` (see `.mcp.json`).
+   Run `cargo build --manifest-path src-tauri/Cargo.toml` once first: agents give an MCP server ~30 s to start.
 
 Tools: `status`, `list_wallpapers`, `get_wallpaper`, `set_wallpaper` (per display: 1, 2, … or `all`),
 `set_options`, `reset_options`, `duplicate_wallpaper`, `create_wallpaper`, `list_files`, `read_file`,

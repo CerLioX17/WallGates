@@ -110,7 +110,7 @@ Wallpapers with the `markets` capability declare their instruments in these prop
 
 `Wallgates.on('markets', d => ...)` receives `quotes[]` (`id`, `symbol`, `name`, `exchange`, `currency`,
 `price`, `change`, `changePct`, `previousClose`, `dayHigh`, `dayLow`, `state`, `spark[]`, …),
-`fx` (e.g. `{ "USDEUR": 0.92 }`), `errors[]` and `updated`. Tickers use Yahoo Finance notation
+`fx` (e.g. `{ "USDEUR": 0.92 }`), `fxPrev` (yesterday's rates, for daily changes in your currency), `errors[]` and `updated`. Tickers use Yahoo Finance notation
 (`AAPL`, `ENI.MI`, `^GSPC`, `EURUSD=X`, `BTC-EUR`). Data is free but delayed on many exchanges and is
 for information only. The user can switch it off in Settings → Privacy.
 
