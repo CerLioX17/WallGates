@@ -205,6 +205,11 @@ fn convert_properties(general: Option<&Value>) -> Map<String, Value> {
                 json!({ "label": label, "type": "select", "options": options, "default": default })
             }
             "textinput" => json!({ "label": label, "type": "text", "default": value.as_str().unwrap_or("") }),
+            "group" => json!({ "label": label, "type": "group" }),
+            // Wallpaper Engine "text" entries are labels/notes in the settings panel.
+            "text" if label.chars().any(|c| c.is_alphanumeric()) && label != clean_label("", key) => {
+                json!({ "label": label, "type": "note" })
+            }
             _ => continue, // file pickers, directories, groups: not supported
         };
         out.insert(key.clone(), converted);

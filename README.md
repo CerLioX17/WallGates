@@ -42,7 +42,9 @@ Wallgates was designed from the most common complaints about existing wallpaper 
 - **Multi-monitor**: a different wallpaper per display, or one spanning all displays.
 - **Playlists**: rotate every N minutes (with shuffle) or switch by time of day / sunrise / sunset, with crossfade transitions.
 - **Audio-reactive**: system audio spectrum (what you hear, not the microphone) for shaders and web wallpapers.
-- **Interactive**: cursor parallax, now playing (Spotify, browsers, any media app), CPU/RAM, weather (Open-Meteo, no key).
+- **Interactive**: cursor parallax, now playing (Spotify, browsers, any media app), weather (Open-Meteo, no key).
+- **Market Terminal**: your ISIN watchlist and portfolio with live P/L, intraday charts, index tape and world market clocks.
+- **System Terminal**: CPU/GPU load and temperatures, VRAM, disks, network, top processes and alerts on a retro CRT terminal.
 - **Performance controls**: frame cap, render quality (great on 4K), eco mode, per-app rules (`game.exe → Unload`), mute unless the desktop is in front.
 - **Create & share**: built-in live code editor, templates, `.wallgates` packages (double-click to install), curated online gallery.
 - **Migrate**: import Wallpaper Engine **video** and **web** projects, or point it at your whole `workshop/content/431960` folder. Web wallpapers keep working thanks to a compatibility layer.

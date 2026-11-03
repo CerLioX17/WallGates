@@ -54,9 +54,13 @@ Every property has a `label`, a `type` and a `default`.
 | `color`  |                                              | `"#rrggbb"`       |
 | `bool`   |                                              | `true` / `false`  |
 | `select` | `options`: `["a","b"]` or `[{value,label}]`  | the option value  |
-| `text`   |                                              | string            |
+| `text`   | `placeholder`                                | string            |
+| `textarea` | `rows`, `placeholder`                      | multi-line string |
+| `group`  | (no `default`)                               | section heading in the panel |
+| `note`   | (no `default`)                               | short explanation shown in the panel |
 
-Choices are saved per wallpaper and survive restarts and updates.
+Choices are saved per wallpaper and survive restarts and updates. Use `group` and `note`
+to keep wallpapers with many options easy to configure.
 
 ## Capabilities
 
@@ -64,12 +68,46 @@ Choices are saved per wallpaper and survive restarts and updates.
 | ---------- | ------------------- | ----- |
 | `audio`    | System audio spectrum: 64 bands + level, ~30/s | What the PC plays, never the microphone (Windows) |
 | `mouse`    | Cursor position over the display | Position only: no clicks or keys are read |
-| `system`   | CPU %, memory used/total | Every 2 s |
+| `system`   | CPU (total, per core, frequency, temperature), GPU (usage, VRAM, temperature), memory, swap, disks, network rates, top processes, uptime, host/OS | Every 2 s. See *System data* below |
 | `media`    | Now playing: title, artist, album, playing, cover art | Any app using Windows media controls |
 | `weather`  | Current weather + today's high/low, sunrise/sunset | Only if the user enabled weather and set a city |
+| `markets`  | Quotes, intraday series, FX rates for the instruments in your properties | See *Market data* below |
 | `network`  | Internet access for `html` wallpapers | **Without it, web wallpapers are fully offline** |
 
 Feeds run only while a wallpaper that asked for them is visible and not paused.
+
+## System data
+
+`Wallgates.on('system', s => ...)` receives:
+`cpu`, `cpuName`, `cores[]`, `cpuFreq` (MHz), `cpuTemp` (°C or null), `cpuPower`, `memory` (%),
+`memoryUsed`, `memoryTotal`, `swapUsed`, `swapTotal`,
+`gpu: { name, usage, vramUsed, vramTotal, temp, fan, power }` (or null),
+`disks[]: { name, mount, used, total }`, `net: { rx, tx }` (bytes/s),
+`processes[]: { name, cpu, memory, count }` (top 10 by CPU, grouped by name), `memoryHogs[]`,
+`processCount`, `uptime`, `host`, `os`, `sensors[]: { label, unit, value, type }`, and
+`sources.temperatures` (`hwinfo`, `gpu-driver`, `system` or null).
+
+On Windows, GPU data comes from the driver (as in Task Manager). CPU temperature and every other
+sensor become available when [HWiNFO](https://www.hwinfo.com) runs with *Shared Memory Support* enabled.
+Wallgates only reads that shared memory, no driver is installed.
+
+## Market data
+
+Wallpapers with the `markets` capability declare their instruments in these property keys:
+
+| Key | Meaning |
+| --- | --- |
+| `watchlist`, `indices` | ISINs or tickers separated by spaces, commas or new lines. `#` starts a comment |
+| `portfolio` | one holding per line: `ISIN_or_TICKER QUANTITY AVERAGE_PRICE` |
+| `market` | preferred exchange for ISINs: `auto`, `milan`, `xetra`, `us`, `paris`, `amsterdam`, `london`, `madrid`, `swiss`, … |
+| `currency` | base currency for FX rates (e.g. `EUR`) |
+| `refresh` | seconds between updates (min 15) |
+
+`Wallgates.on('markets', d => ...)` receives `quotes[]` (`id`, `symbol`, `name`, `exchange`, `currency`,
+`price`, `change`, `changePct`, `previousClose`, `dayHigh`, `dayLow`, `state`, `spark[]`, …),
+`fx` (e.g. `{ "USDEUR": 0.92 }`), `errors[]` and `updated`. Tickers use Yahoo Finance notation
+(`AAPL`, `ENI.MI`, `^GSPC`, `EURUSD=X`, `BTC-EUR`). Data is free but delayed on many exchanges and is
+for information only. The user can switch it off in Settings → Privacy.
 
 ## Type `image` / `video`
 

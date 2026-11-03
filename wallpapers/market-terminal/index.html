@@ -1,0 +1,332 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="/__wallgates/wallgates-sdk.js"></script>
+<style>
+  :root {
+    --bg: #07070d; --panel: rgba(17, 15, 31, 0.78); --line: rgba(139, 92, 246, 0.22);
+    --fg: #e8eaff; --dim: #8a8db0; --accent: #8b5cf6; --accent2: #22d3ee; --up: #34d399; --down: #fb7185; --warn: #fbbf24;
+    --head: linear-gradient(90deg, #22d3ee, #8b5cf6 55%, #ec4899);
+    --fs: 1;
+  }
+  body.terminal { --bg: #050505; --panel: rgba(12, 10, 6, 0.9); --line: rgba(255, 140, 0, 0.28); --fg: #ffb340; --dim: #b07a2a; --accent: #ff8c00; --accent2: #ffd27a; --up: #4ade80; --down: #ff4d4d; --head: linear-gradient(90deg, #ff8c00, #ffb340); }
+  body.amber { --bg: #0b0700; --panel: rgba(20, 12, 0, 0.85); --line: rgba(255, 176, 0, 0.25); --fg: #ffc94a; --dim: #b8892a; --accent: #ffb000; --accent2: #ffe08a; --up: #ffe08a; --down: #ff7a3d; --head: linear-gradient(90deg, #ffb000, #ffe08a); }
+  body.green { --bg: #010a04; --panel: rgba(0, 18, 6, 0.85); --line: rgba(57, 255, 120, 0.22); --fg: #59ff8f; --dim: #2f9c58; --accent: #39ff78; --accent2: #b6ffcb; --up: #b6ffcb; --down: #ff6b6b; --head: linear-gradient(90deg, #39ff78, #b6ffcb); }
+  body.mono { --bg: #0a0a0a; --panel: rgba(22, 22, 22, 0.85); --line: rgba(255, 255, 255, 0.14); --fg: #e6e6e6; --dim: #8c8c8c; --accent: #ffffff; --accent2: #bdbdbd; --up: #e6e6e6; --down: #8c8c8c; --head: linear-gradient(90deg, #fff, #9a9a9a); }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body {
+    background: radial-gradient(70% 60% at 85% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 70%), var(--bg);
+    color: var(--fg); font: calc(0.82vw * var(--fs)) / 1.35 "Cascadia Mono", "Cascadia Code", "JetBrains Mono", Consolas, ui-monospace, monospace;
+    display: grid; grid-template-rows: auto auto 1fr auto; gap: 0.9vw; padding: 1.6vw 2vw;
+  }
+  body.glow { text-shadow: 0 0 0.45em color-mix(in srgb, var(--fg) 45%, transparent); }
+  .scan { position: fixed; inset: 0; pointer-events: none; z-index: 10; display: none;
+    background: repeating-linear-gradient(0deg, rgba(0,0,0,0.22) 0 1px, transparent 1px 3px); mix-blend-mode: multiply; }
+  body.scanlines .scan { display: block; }
+
+  header { display: flex; align-items: center; gap: 2vw; }
+  .brand { font-weight: 700; letter-spacing: 0.18em; font-size: 1.15em; white-space: nowrap; }
+  .brand b { background: var(--head); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; }
+  .clocks { display: flex; gap: 1.6vw; margin-left: auto; }
+  .clock { display: flex; flex-direction: column; align-items: flex-end; }
+  .clock small { color: var(--dim); letter-spacing: 0.12em; font-size: 0.75em; }
+  .clock span { font-size: 1.15em; font-variant-numeric: tabular-nums; }
+  .dot { display: inline-block; width: 0.55em; height: 0.55em; border-radius: 50%; background: var(--dim); margin-right: 0.35em; vertical-align: middle; }
+  .dot.open { background: var(--up); box-shadow: 0 0 0.6em var(--up); }
+  .dot.pre, .dot.post { background: var(--warn); }
+
+  .tape { overflow: hidden; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); padding: 0.45vw 0; white-space: nowrap; mask-image: linear-gradient(90deg, transparent, #000 4%, #000 96%, transparent); }
+  .tape-inner { display: inline-flex; gap: 3vw; animation: tape 60s linear infinite; }
+  body.paused .tape-inner { animation-play-state: paused; }
+  .tape-item b { color: var(--dim); font-weight: 600; margin-right: 0.6em; }
+  @keyframes tape { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+
+  main { display: grid; grid-template-columns: 1.55fr 1fr; gap: 1.2vw; min-height: 0; align-items: start; }
+  main.single { grid-template-columns: 1fr; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 0.8vw; padding: 1vw 1.2vw; min-height: 0; overflow: hidden; display: flex; flex-direction: column; backdrop-filter: blur(10px); }
+  .panel h2 { margin: 0 0 0.7vw; font-size: 0.85em; letter-spacing: 0.22em; color: var(--accent); font-weight: 700; display: flex; justify-content: space-between; }
+  .panel h2 span { color: var(--dim); letter-spacing: 0.08em; font-weight: 400; }
+  .col { display: flex; flex-direction: column; gap: 1.2vw; min-height: 0; }
+  .panel { max-height: 100%; }
+
+  table { width: 100%; border-collapse: collapse; font-variant-numeric: tabular-nums; }
+  th { text-align: right; color: var(--dim); font-weight: 400; font-size: 0.78em; letter-spacing: 0.12em; padding: 0 0.5vw 0.4vw; border-bottom: 1px solid var(--line); }
+  td { text-align: right; padding: 0.42vw 0.5vw; border-bottom: 1px solid color-mix(in srgb, var(--line) 45%, transparent); white-space: nowrap; }
+  th:first-child, td:first-child, th.l, td.l { text-align: left; }
+  td.sym { font-weight: 700; }
+  td.name { color: var(--dim); max-width: 14vw; overflow: hidden; text-overflow: ellipsis; text-align: left; }
+  .up { color: var(--up); } .down { color: var(--down); } .flat { color: var(--dim); }
+  .flash-up { animation: fu 1.2s; } .flash-down { animation: fd 1.2s; }
+  @keyframes fu { from { background: color-mix(in srgb, var(--up) 30%, transparent); } }
+  @keyframes fd { from { background: color-mix(in srgb, var(--down) 30%, transparent); } }
+  svg.spark { width: 7vw; height: 1.7vw; vertical-align: middle; overflow: visible; }
+  .range { position: relative; width: 5vw; height: 0.35vw; background: color-mix(in srgb, var(--dim) 30%, transparent); border-radius: 1vw; display: inline-block; vertical-align: middle; }
+  .range i { position: absolute; top: -0.2vw; width: 0.25vw; height: 0.75vw; background: var(--fg); border-radius: 0.2vw; }
+
+  .summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.8vw; margin-bottom: 0.9vw; }
+  .kpi small { display: block; color: var(--dim); font-size: 0.75em; letter-spacing: 0.14em; }
+  .kpi strong { font-size: 1.7em; font-weight: 600; }
+  .kpi em { font-style: normal; font-size: 0.95em; }
+  .alloc { display: flex; height: 0.55vw; border-radius: 1vw; overflow: hidden; margin-bottom: 0.9vw; }
+  .alloc span { height: 100%; }
+  .movers { display: grid; grid-template-columns: 1fr 1fr; gap: 1vw; }
+  .movers div p { margin: 0.25vw 0; display: flex; justify-content: space-between; }
+  body.privacy .money { filter: blur(0.45em); }
+
+  footer { display: flex; justify-content: space-between; color: var(--dim); font-size: 0.8em; letter-spacing: 0.06em; }
+  .empty { color: var(--dim); padding: 1vw 0; white-space: normal; text-align: left; }
+  .blink { animation: blink 1.2s steps(2) infinite; }
+  body.paused .blink { animation: none; }
+  @keyframes blink { 50% { opacity: 0; } }
+</style>
+</head>
+<body class="wallgates glow scanlines">
+<div class="scan"></div>
+<header>
+  <div class="brand"><b>WALLGATES</b> ▸ MARKETS</div>
+  <div class="clocks" id="clocks"></div>
+</header>
+<div class="tape" id="tapeBox"><div class="tape-inner" id="tape"></div></div>
+<main id="main">
+  <section class="panel" id="watchPanel">
+    <h2>WATCHLIST <span id="watchInfo"></span></h2>
+    <table>
+      <thead><tr><th>SYMBOL</th><th class="l">NAME</th><th>LAST</th><th>CHG</th><th>CHG %</th><th>DAY RANGE</th><th>INTRADAY</th></tr></thead>
+      <tbody id="watch"></tbody>
+    </table>
+    <div class="empty" id="watchEmpty"></div>
+  </section>
+  <div class="col" id="side">
+    <section class="panel" id="portPanel">
+      <h2>PORTFOLIO <span id="portCcy"></span></h2>
+      <div class="summary">
+        <div class="kpi"><small>VALUE</small><strong class="money" id="pValue">—</strong></div>
+        <div class="kpi"><small>TODAY</small><strong class="money" id="pDay">—</strong> <em id="pDayPct"></em></div>
+        <div class="kpi"><small>TOTAL P/L</small><strong class="money" id="pPl">—</strong> <em id="pPlPct"></em></div>
+      </div>
+      <div class="alloc" id="alloc"></div>
+      <table>
+        <thead><tr><th>SYMBOL</th><th>QTY</th><th>AVG</th><th>LAST</th><th>VALUE</th><th>P/L</th><th>P/L %</th></tr></thead>
+        <tbody id="port"></tbody>
+      </table>
+    </section>
+    <section class="panel" id="moversPanel">
+      <h2>TOP MOVERS <span>TODAY</span></h2>
+      <div class="movers"><div id="gainers"></div><div id="losers"></div></div>
+    </section>
+  </div>
+</main>
+<footer>
+  <span id="status"><span class="blink">▮</span> WAITING FOR MARKET DATA…</span>
+  <span>DATA: YAHOO FINANCE · DELAYED · NOT INVESTMENT ADVICE</span>
+</footer>
+<script>
+// Market Terminal — Wallgates built-in wallpaper (CC BY 4.0).
+const $ = (id) => document.getElementById(id);
+let o = {}, data = null, prev = {};
+const NAMES = { '^GSPC': 'S&P 500', '^NDX': 'NASDAQ 100', '^DJI': 'DOW JONES', '^STOXX50E': 'EURO STOXX 50', '^GDAXI': 'DAX', 'FTSEMIB.MI': 'FTSE MIB',
+  '^FTSE': 'FTSE 100', '^FCHI': 'CAC 40', '^N225': 'NIKKEI 225', 'EURUSD=X': 'EUR/USD', 'BTC-EUR': 'BTC/EUR', 'BTC-USD': 'BTC/USD', 'GC=F': 'GOLD', 'CL=F': 'WTI OIL', '^VIX': 'VIX' };
+const EXCHANGES = [
+  { label: 'NEW YORK', tz: 'America/New_York', open: [9, 30], close: [16, 0] },
+  { label: 'LONDON', tz: 'Europe/London', open: [8, 0], close: [16, 30] },
+  { label: 'MILANO', tz: 'Europe/Rome', open: [9, 0], close: [17, 30] },
+  { label: 'TOKYO', tz: 'Asia/Tokyo', open: [9, 0], close: [15, 30] },
+];
+const lang = navigator.language || 'en-US';
+const fmt = (v, d = 2) => (v == null || !isFinite(v) ? '—' : Number(v).toLocaleString(lang, { minimumFractionDigits: d, maximumFractionDigits: d }));
+const priceDigits = (p) => (Math.abs(p) < 10 ? 4 : 2);
+const signed = (v, d = 2) => (v > 0 ? '+' : '') + fmt(v, d);
+const cls = (v) => (v > 0 ? 'up' : v < 0 ? 'down' : 'flat');
+const el = (tag, c, text) => { const n = document.createElement(tag); if (c) n.className = c; if (text != null) n.textContent = text; return n; };
+const lines = (text) => String(text || '').split('\n').map((l) => l.split('#')[0].trim()).filter(Boolean);
+const ids = (text) => lines(text).join(' ').split(/[\s,;]+/).map((s) => s.toUpperCase()).filter(Boolean);
+const quoteFor = (id) => data?.quotes?.find((q) => q.id === id);
+const label = (q, id) => NAMES[id] || NAMES[q?.symbol] || q?.symbol || id;
+
+function money(v, ccy) {
+  if (v == null || !isFinite(v)) return '—';
+  try { return Number(v).toLocaleString(lang, { style: 'currency', currency: ccy, maximumFractionDigits: 2 }); } catch (_) { return fmt(v) + ' ' + ccy; }
+}
+// Price in a currency we can convert (GBp = pence).
+function norm(q) {
+  let price = q.price, change = q.change, ccy = q.currency || o.currency;
+  if (ccy === 'GBp') { price /= 100; change /= 100; ccy = 'GBP'; }
+  return { price, change, ccy };
+}
+function toBase(v, ccy) {
+  const base = o.currency || 'EUR';
+  if (ccy === base) return v;
+  const r = data?.fx?.[ccy + base];
+  return r ? v * r : null;
+}
+
+function spark(q) {
+  const s = q.spark || [];
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', 'spark');
+  svg.setAttribute('viewBox', '0 0 100 30');
+  svg.setAttribute('preserveAspectRatio', 'none');
+  if (s.length < 2) return svg;
+  const all = s.concat([q.previousClose]);
+  const min = Math.min(...all), max = Math.max(...all), span = max - min || 1;
+  const y = (v) => 28 - ((v - min) / span) * 26;
+  const pts = s.map((v, i) => `${(i / (s.length - 1)) * 100},${y(v)}`).join(' ');
+  const color = q.change >= 0 ? 'var(--up)' : 'var(--down)';
+  svg.innerHTML = `<line x1="0" x2="100" y1="${y(q.previousClose)}" y2="${y(q.previousClose)}" stroke="var(--dim)" stroke-dasharray="2 3" stroke-width="0.6" vector-effect="non-scaling-stroke"/>`
+    + `<polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6" vector-effect="non-scaling-stroke"/>`;
+  return svg;
+}
+
+function range(q) {
+  const box = el('span', 'range');
+  if (q.dayHigh > q.dayLow) {
+    const i = el('i');
+    i.style.left = `calc(${Math.min(100, Math.max(0, ((q.price - q.dayLow) / (q.dayHigh - q.dayLow)) * 100))}% - 0.12vw)`;
+    box.append(i);
+  }
+  return box;
+}
+
+function renderClocks() {
+  const now = new Date();
+  $('clocks').replaceChildren(...EXCHANGES.map((x) => {
+    const parts = new Intl.DateTimeFormat('en-GB', { timeZone: x.tz, hour: '2-digit', minute: '2-digit', weekday: 'short', hour12: false }).formatToParts(now);
+    const get = (t) => parts.find((p) => p.type === t)?.value;
+    const h = Number(get('hour')), m = Number(get('minute')), wd = get('weekday');
+    const mins = h * 60 + m, open = !['Sat', 'Sun'].includes(wd) && mins >= x.open[0] * 60 + x.open[1] && mins < x.close[0] * 60 + x.close[1];
+    const c = el('div', 'clock');
+    const small = el('small'); small.append(el('i', 'dot' + (open ? ' open' : '')), x.label);
+    c.append(small, el('span', null, `${get('hour')}:${get('minute')}`));
+    return c;
+  }));
+}
+
+function renderTape() {
+  const list = ids(o.indices);
+  const items = list.map((id) => {
+    const q = quoteFor(id);
+    const span = el('span', 'tape-item');
+    span.append(el('b', null, label(q, id)));
+    if (q) span.append(el('span', null, fmt(q.price, priceDigits(q.price)) + ' '), el('span', cls(q.changePct), signed(q.changePct) + '%'));
+    else span.append(el('span', 'flat', '—'));
+    return span;
+  });
+  // Duplicate for a seamless loop.
+  $('tape').replaceChildren(...items, ...items.map((n) => n.cloneNode(true)));
+}
+
+function renderWatch() {
+  const list = ids(o.watchlist);
+  $('watchInfo').textContent = data ? `${list.length} INSTRUMENTS` : '';
+  $('watchEmpty').textContent = list.length ? '' : 'Add ISINs or tickers in Wallgates → Customize → Watchlist.';
+  $('watch').replaceChildren(...list.map((id) => {
+    const q = quoteFor(id);
+    const tr = el('tr');
+    if (!q) {
+      tr.append(el('td', 'sym', id), el('td', 'name', data ? 'not found / no data' : 'loading…'));
+      for (let i = 0; i < 5; i++) tr.append(el('td', 'flat', '—'));
+      return tr;
+    }
+    const d = priceDigits(q.price);
+    const last = el('td', null, fmt(q.price, d));
+    const before = prev[q.symbol];
+    if (before != null && before !== q.price) last.className = q.price > before ? 'flash-up' : 'flash-down';
+    const st = el('td', 'sym');
+    st.append(el('i', 'dot ' + (q.state || '')), q.symbol);
+    const rangeTd = el('td'); rangeTd.append(range(q));
+    const sparkTd = el('td'); sparkTd.append(spark(q));
+    tr.append(st, el('td', 'name', q.name || ''), last, el('td', cls(q.change), signed(q.change, d)), el('td', cls(q.changePct), signed(q.changePct) + '%'), rangeTd, sparkTd);
+    return tr;
+  }));
+}
+
+function renderPortfolio() {
+  const base = o.currency || 'EUR';
+  $('portCcy').textContent = base;
+  const holdings = lines(o.portfolio).map((l) => {
+    const [id, qty, avg] = l.split(/[\s,;]+/);
+    return { id: (id || '').toUpperCase(), qty: Number(qty) || 0, avg: Number(avg) || 0 };
+  }).filter((h) => h.id && h.qty);
+
+  let total = 0, day = 0, cost = 0, complete = true;
+  const rows = holdings.map((h) => {
+    const q = quoteFor(h.id);
+    if (!q) { complete = false; return { h, q }; }
+    const n = norm(q);
+    const avg = q.currency === 'GBp' ? h.avg / 100 : h.avg;
+    const value = toBase(n.price * h.qty, n.ccy);
+    const dayChg = toBase(n.change * h.qty, n.ccy);
+    const costB = toBase(avg * h.qty, n.ccy);
+    if (value == null) complete = false; else { total += value; day += dayChg; cost += costB; }
+    return { h, q, value, pl: value != null && avg ? value - costB : null, plPct: avg ? (n.price / avg - 1) * 100 : null };
+  });
+
+  $('pValue').textContent = data ? money(total, base) : '—';
+  $('pDay').textContent = data ? (day >= 0 ? '+' : '') + money(day, base) : '—';
+  $('pDay').className = 'money ' + cls(day);
+  $('pDayPct').textContent = data && total ? signed((day / (total - day)) * 100) + '%' : '';
+  $('pDayPct').className = cls(day);
+  const pl = total - cost;
+  $('pPl').textContent = data && cost ? (pl >= 0 ? '+' : '') + money(pl, base) : '—';
+  $('pPl').className = 'money ' + cls(pl);
+  $('pPlPct').textContent = data && cost ? signed((pl / cost) * 100) + '%' : '';
+  $('pPlPct').className = cls(pl);
+  if (!complete && data) $('portCcy').textContent = base + ' · PARTIAL';
+
+  const palette = ['#22d3ee', '#8b5cf6', '#ec4899', '#34d399', '#fbbf24', '#60a5fa', '#f472b6', '#a3e635'];
+  $('alloc').replaceChildren(...rows.filter((r) => r.value > 0).map((r, i) => {
+    const s = el('span'); s.style.width = `${(r.value / total) * 100}%`; s.style.background = palette[i % palette.length];
+    s.title = r.q.symbol; return s;
+  }));
+
+  $('port').replaceChildren(...rows.map(({ h, q, value, pl: p, plPct }) => {
+    const tr = el('tr');
+    tr.append(el('td', 'sym', q ? q.symbol : h.id), el('td', 'money', fmt(h.qty, h.qty % 1 ? 3 : 0)), el('td', 'money', fmt(h.avg)),
+      el('td', null, q ? fmt(q.price, priceDigits(q.price)) : '—'), el('td', 'money', value != null ? money(value, base) : '—'),
+      el('td', 'money ' + cls(p), p != null ? (p >= 0 ? '+' : '') + money(p, base) : '—'), el('td', cls(plPct), plPct != null ? signed(plPct) + '%' : '—'));
+    return tr;
+  }));
+}
+
+function renderMovers() {
+  const qs = (data?.quotes || []).filter((q) => !ids(o.indices).includes(q.id));
+  const sorted = [...qs].sort((a, b) => b.changePct - a.changePct);
+  const row = (q) => { const p = el('p'); p.append(el('span', 'sym', q.symbol), el('span', cls(q.changePct), signed(q.changePct) + '%')); return p; };
+  $('gainers').replaceChildren(...sorted.filter((q) => q.changePct > 0).slice(0, 5).map(row));
+  $('losers').replaceChildren(...sorted.reverse().filter((q) => q.changePct < 0).slice(0, 5).map(row));
+}
+
+function renderAll() {
+  document.body.className = [o.theme || 'wallgates', o.glow ? 'glow' : '', o.scanlines ? 'scanlines' : '', o.privacy ? 'privacy' : '', Wallgates.paused ? 'paused' : ''].join(' ');
+  document.documentElement.style.setProperty('--fs', o.fontSize || 1);
+  $('tapeBox').hidden = !o.showTape;
+  $('portPanel').hidden = !o.showPortfolio;
+  $('moversPanel').hidden = !o.showMovers;
+  $('side').hidden = !o.showPortfolio && !o.showMovers;
+  $('main').classList.toggle('single', $('side').hidden);
+  renderClocks(); renderTape(); renderWatch(); renderPortfolio(); renderMovers();
+  if (data) {
+    const t = new Date(data.updated * 1000).toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const errs = data.errors?.length ? ` · ${data.errors.length} NOT FOUND` : '';
+    $('status').textContent = `● LIVE FEED · UPDATED ${t}${errs}`;
+  }
+}
+
+Wallgates.on('properties', (v) => { o = v; renderAll(); });
+Wallgates.on('pause', () => renderAll());
+Wallgates.on('markets', (d) => {
+  for (const q of data?.quotes || []) prev[q.symbol] = q.price;
+  data = d;
+  renderAll();
+});
+setInterval(() => { if (!Wallgates.paused) renderClocks(); }, 10000);
+setTimeout(() => {
+  if (!data) $('status').textContent = '▮ NO DATA YET — CHECK YOUR CONNECTION OR ENABLE MARKET DATA IN WALLGATES → SETTINGS → PRIVACY';
+}, 30000);
+renderClocks();
+</script>
+</body>
+</html>

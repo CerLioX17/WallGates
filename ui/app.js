@@ -47,8 +47,9 @@ const ICONS = {
   image: P('<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/>'),
   package: P('<path d="M21 16V8a2 2 0 0 0-1-1.7l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.7l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/><path d="M3.3 7L12 12l8.7-5M12 22V12"/>'),
   gate: P('<path d="M6 21V10a6 6 0 0 1 12 0v11"/><path d="M3 21h18"/>'),
+  chart: P('<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>'),
 };
-const CAP_ICON = { audio: 'music', mouse: 'mouse', system: 'cpu', media: 'media', weather: 'cloud', network: 'globe' };
+const CAP_ICON = { audio: 'music', mouse: 'mouse', system: 'cpu', media: 'media', weather: 'cloud', markets: 'chart', network: 'globe' };
 
 function icon(name, cls = 'ico') {
   const s = document.createElement('span');
@@ -376,8 +377,17 @@ function control(w, key, def, value) {
     case 'text': {
       const send = throttle(set, 250);
       return el('label', { class: 'prop' }, el('span', {}, label),
-        el('input', { type: 'text', value: value ?? '', maxLength: 500, oninput: (e) => send(e.target.value) }));
+        el('input', { type: 'text', value: value ?? '', maxLength: 500, placeholder: def.placeholder || '', oninput: (e) => send(e.target.value) }));
     }
+    case 'textarea': {
+      const send = throttle(set, 600);
+      return el('label', { class: 'prop' }, el('span', {}, label),
+        el('textarea', { class: 'prop-area', rows: def.rows || 5, value: value ?? '', maxLength: 8000, spellcheck: false, placeholder: def.placeholder || '', oninput: (e) => send(e.target.value) }));
+    }
+    case 'group':
+      return el('h4', { class: 'prop-group' }, label);
+    case 'note':
+      return el('p', { class: 'prop-note' }, label);
     default:
       return null;
   }
@@ -858,6 +868,7 @@ async function renderSettings(view) {
         el('p', { class: 'muted', style: 'font-size:13px' }, t('set.privacyText')),
         setting(t('set.galleryOn'), sw(c.integrations?.gallery, (v) => patch({ integrations: { gallery: v } }))),
         setting(t('set.updates'), sw(c.integrations?.update_check, (v) => patch({ integrations: { update_check: v } }))),
+        setting(t('set.marketsOn'), sw(c.integrations?.markets, (v) => patch({ integrations: { markets: v } }))),
         setting(t('set.mature'), sw(c.show_mature, (v) => patch({ show_mature: v })))),
       el('div', { class: 'panel' },
         el('h2', {}, t('set.about')),

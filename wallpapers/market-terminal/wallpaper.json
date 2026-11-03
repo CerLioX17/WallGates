@@ -1,0 +1,39 @@
+{
+  "name": "Market Terminal",
+  "author": "Wallgates",
+  "description": "Your watchlist and portfolio on the desktop, terminal style. Paste ISINs or tickers, pick your exchange and currency: prices, daily change, intraday charts and portfolio P/L update by themselves.",
+  "type": "html",
+  "entry": "index.html",
+  "preview": "preview.jpg",
+  "license": "CC-BY-4.0",
+  "version": "1.0.0",
+  "tags": ["finance", "stocks", "etf", "portfolio", "terminal", "bloomberg"],
+  "capabilities": ["markets"],
+  "properties": {
+    "g1": { "label": "Instruments", "type": "group" },
+    "watchlist": { "label": "Watchlist", "type": "textarea", "rows": 6, "placeholder": "One per line: ISIN or ticker. # starts a comment",
+      "default": "IE00B4L5Y983  # iShares Core MSCI World\nUS0378331005  # Apple\nUS5949181045  # Microsoft\nUS67066G1040  # NVIDIA\nNL0010273215  # ASML\nIT0003132476  # ENI\nIT0000072618  # Intesa Sanpaolo" },
+    "portfolio": { "label": "Portfolio", "type": "textarea", "rows": 5, "placeholder": "ISIN_or_TICKER  QUANTITY  AVERAGE_PRICE",
+      "default": "IE00B4L5Y983  40  82.50\nUS0378331005  10  175.00\nIT0003132476  150  13.90" },
+    "n1": { "label": "Portfolio: one holding per line — ISIN or ticker, quantity, average buy price (in the instrument's currency).", "type": "note" },
+    "indices": { "label": "Ticker tape", "type": "text", "default": "^GSPC ^NDX ^DJI ^STOXX50E ^GDAXI FTSEMIB.MI EURUSD=X BTC-EUR GC=F" },
+    "market": { "label": "Preferred exchange for ISINs", "type": "select", "default": "milan", "options": [
+      { "value": "auto", "label": "Automatic" }, { "value": "milan", "label": "Borsa Italiana (Milan)" },
+      { "value": "xetra", "label": "Xetra (Germany)" }, { "value": "us", "label": "USA (NYSE / Nasdaq)" },
+      { "value": "paris", "label": "Euronext Paris" }, { "value": "amsterdam", "label": "Euronext Amsterdam" },
+      { "value": "london", "label": "London" }, { "value": "madrid", "label": "Madrid" }, { "value": "swiss", "label": "SIX Swiss" } ] },
+    "currency": { "label": "Portfolio currency", "type": "select", "default": "EUR", "options": ["EUR", "USD", "GBP", "CHF"] },
+    "refresh": { "label": "Refresh every (seconds)", "type": "slider", "min": 15, "max": 300, "step": 5, "default": 60 },
+    "g2": { "label": "Look", "type": "group" },
+    "theme": { "label": "Theme", "type": "select", "default": "wallgates", "options": [
+      { "value": "wallgates", "label": "Wallgates neon" }, { "value": "terminal", "label": "Classic orange terminal" },
+      { "value": "amber", "label": "Amber CRT" }, { "value": "green", "label": "Green phosphor" }, { "value": "mono", "label": "Monochrome" } ] },
+    "fontSize": { "label": "Text size", "type": "slider", "min": 0.6, "max": 1.6, "step": 0.05, "default": 1 },
+    "showTape": { "label": "Ticker tape", "type": "bool", "default": true },
+    "showPortfolio": { "label": "Portfolio panel", "type": "bool", "default": true },
+    "showMovers": { "label": "Top movers", "type": "bool", "default": true },
+    "privacy": { "label": "Hide amounts (privacy)", "type": "bool", "default": false },
+    "scanlines": { "label": "CRT scanlines", "type": "bool", "default": true },
+    "glow": { "label": "Glow", "type": "bool", "default": true }
+  }
+}

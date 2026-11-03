@@ -32,6 +32,8 @@ pub struct Needs {
     pub system: Vec<String>,
     pub media: Vec<String>,
     pub weather: Vec<String>,
+    /// (label, instruments requested by that wallpaper)
+    pub markets: Vec<(String, feeds::markets::Request)>,
 }
 
 #[derive(Default)]
@@ -310,6 +312,9 @@ fn needs_of(states: &[SlotState], slots: &[Slot], cfg: &Config) -> Needs {
         }
         if has("weather") && cfg.integrations.weather && cfg.integrations.location.is_some() {
             n.weather.push(st.label.clone());
+        }
+        if has("markets") && cfg.integrations.markets {
+            n.markets.push((st.label.clone(), feeds::markets::request_from(&st.values)));
         }
     }
     n
@@ -627,6 +632,10 @@ pub fn spawn_slow_loop(app: AppHandle) {
         .spawn(move || {
             let mut tick: u64 = 0;
             let mut system = feeds::system::SystemFeed::default();
+            let markets = std::sync::Arc::new(std::sync::Mutex::new(feeds::markets::Markets::new(&app.state::<AppState>().paths.data)));
+            let markets_busy = std::sync::Arc::new(std::sync::atomic::AtomicBool::new(false));
+            let mut last_markets: Option<Instant> = None;
+            let mut markets_key = String::new();
             let mut media = feeds::media::MediaFeed::default();
             let mut last_weather: Option<Instant> = None;
             let mut weather_key = String::new();
@@ -683,6 +692,30 @@ pub fn spawn_slow_loop(app: AppHandle) {
                                 emit_to_labels(&app, &needs.media, "wf-feed", json!({ "kind": "media", "data": data }));
                             }
                         }
+                    }
+                }
+
+                // Markets: at the wallpaper's refresh interval (min 15 s), off-thread.
+                if !needs.markets.is_empty() {
+                    let reqs: Vec<feeds::markets::Request> = needs.markets.iter().map(|(_, r)| r.clone()).collect();
+                    let refresh = reqs.iter().map(|r| r.refresh_secs).min().unwrap_or(60);
+                    let key = format!("{:?}", reqs.iter().map(|r| (&r.ids, &r.market, &r.currency)).collect::<Vec<_>>());
+                    let due = last_markets.is_none_or(|t| t.elapsed() >= Duration::from_secs(refresh)) || key != markets_key;
+                    if due && !markets_busy.swap(true, std::sync::atomic::Ordering::SeqCst) {
+                        last_markets = Some(Instant::now());
+                        markets_key = key;
+                        let (app2, m, busy) = (app.clone(), markets.clone(), markets_busy.clone());
+                        std::thread::spawn(move || {
+                            let data = m.lock().map(|mut m| m.fetch(&reqs)).unwrap_or(Value::Null);
+                            busy.store(false, std::sync::atomic::Ordering::SeqCst);
+                            if data.is_null() {
+                                return;
+                            }
+                            let st = app2.state::<AppState>();
+                            st.rt().feed_cache.insert("markets".into(), data.clone());
+                            let labels: Vec<String> = st.rt().needs.markets.iter().map(|(l, _)| l.clone()).collect();
+                            emit_to_labels(&app2, &labels, "wf-feed", json!({ "kind": "markets", "data": data }));
+                        });
                     }
                 }
 

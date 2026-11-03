@@ -1,0 +1,350 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<script src="/__wallgates/wallgates-sdk.js"></script>
+<style>
+  :root {
+    --bg: #05040b; --fg: #d9dcff; --dim: #6e7199; --hi: #22d3ee; --hi2: #a78bfa; --warn: #fbbf24; --bad: #fb7185; --ok: #34d399;
+    --line: rgba(167, 139, 250, 0.25); --fs: 1; --glow: 0.55; --scan: 0.35; --noise: 0.08; --vig: 0.55;
+    --logo: linear-gradient(180deg, #22d3ee, #8b5cf6 55%, #ec4899);
+  }
+  body.mono { --bg: #0b0b0b; --fg: #d6d6d6; --dim: #777; --hi: #ffffff; --hi2: #bdbdbd; --line: rgba(255,255,255,0.16); --logo: linear-gradient(180deg, #fff, #8a8a8a); }
+  body.amber { --bg: #0a0600; --fg: #ffc04d; --dim: #a5741f; --hi: #ffd27a; --hi2: #ff9d00; --ok: #ffd27a; --line: rgba(255,170,0,0.25); --logo: linear-gradient(180deg, #ffe0a0, #ff9d00); }
+  body.green { --bg: #010803; --fg: #5dff94; --dim: #2d8a51; --hi: #b6ffcb; --hi2: #39ff78; --ok: #b6ffcb; --line: rgba(57,255,120,0.22); --logo: linear-gradient(180deg, #d4ffe0, #39ff78); }
+
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; overflow: hidden; }
+  body {
+    background: radial-gradient(80% 70% at 50% 40%, color-mix(in srgb, var(--hi2) 9%, var(--bg)), var(--bg));
+    color: var(--fg); font: calc(0.78vw * var(--fs)) / 1.4 "Cascadia Mono", "Cascadia Code", "JetBrains Mono", Consolas, ui-monospace, monospace;
+    text-shadow: 0 0 calc(0.6em * var(--glow)) color-mix(in srgb, var(--fg) calc(var(--glow) * 70%), transparent);
+  }
+  body.aberration .screen { text-shadow: -0.06em 0 rgba(255, 40, 80, 0.35), 0.06em 0 rgba(0, 220, 255, 0.35), 0 0 calc(0.6em * var(--glow)) color-mix(in srgb, var(--fg) calc(var(--glow) * 70%), transparent); }
+  body.flicker .screen { animation: flicker 6s infinite; }
+  body.paused .screen { animation: none; }
+  @keyframes flicker { 0%, 97%, 100% { opacity: 1; } 98% { opacity: 0.86; } 99% { opacity: 0.95; } }
+
+  .fx { position: fixed; inset: 0; pointer-events: none; z-index: 20; }
+  .scan { background: repeating-linear-gradient(0deg, rgba(0,0,0,0.5) 0 1px, transparent 1px 3px); opacity: var(--scan); }
+  .vig { background: radial-gradient(ellipse at center, transparent 55%, rgba(0,0,0,0.9)); opacity: var(--vig); }
+  canvas.noise { opacity: var(--noise); width: 100%; height: 100%; mix-blend-mode: screen; }
+
+  .screen { position: absolute; inset: 0; padding: 2.2vw 2.6vw; display: grid; gap: 1.1vw;
+    grid-template-columns: 1.15fr 1fr 1fr; grid-template-rows: auto 1fr 1fr auto; }
+  .boot { position: absolute; inset: 0; padding: 3vw; white-space: pre-wrap; z-index: 5; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .boot > div { min-width: 34em; }
+  .boot pre, .logo { margin: 0; font-family: inherit; line-height: 1.05; background: var(--logo); -webkit-background-clip: text; background-clip: text; color: transparent; text-shadow: none; }
+
+  header { grid-column: 1 / -1; display: flex; align-items: center; gap: 2vw; border-bottom: 1px solid var(--line); padding-bottom: 0.8vw; }
+  header .logo { font-size: 0.42em; }
+  header h1 { margin: 0; font-size: 1.5em; letter-spacing: 0.25em; font-weight: 700; color: var(--hi); }
+  header .meta { color: var(--dim); }
+  header .clock { margin-left: auto; text-align: right; }
+  header .clock b { font-size: 2.4em; font-weight: 300; color: var(--fg); letter-spacing: 0.05em; display: block; line-height: 1; }
+
+  .panel { border: 1px solid var(--line); padding: 1.1vw 1.1vw 0.9vw; min-height: 0; overflow: visible; position: relative; background: color-mix(in srgb, var(--bg) 70%, transparent); }
+  .panel::before { content: attr(data-title); position: absolute; top: -0.75em; left: 0.8vw; padding: 0 0.5em; background: var(--bg); z-index: 1; line-height: 1.5; color: var(--hi2); letter-spacing: 0.2em; font-size: 0.85em; }
+  .row { display: flex; justify-content: space-between; gap: 1em; white-space: nowrap; }
+  .k { color: var(--dim); }
+  .big { font-size: 2.6em; line-height: 1.05; color: var(--hi); font-weight: 300; }
+  .bar { font-family: inherit; letter-spacing: -0.04em; color: var(--hi); }
+  .bar .e { color: color-mix(in srgb, var(--dim) 55%, transparent); }
+  .warn { color: var(--warn) !important; } .bad { color: var(--bad) !important; animation: pulse 1s infinite; }
+  body.paused .bad { animation: none; }
+  @keyframes pulse { 50% { opacity: 0.45; } }
+  .cores { display: grid; grid-template-columns: repeat(auto-fill, minmax(4.2em, 1fr)); gap: 0.25vw 0.6vw; margin-top: 0.5vw; font-size: 0.85em; }
+  canvas.graph { width: 100%; height: 4vw; display: block; margin-top: 0.4vw; }
+  .procs { width: 100%; border-collapse: collapse; }
+  .procs td { padding: 0.12vw 0; white-space: nowrap; }
+  .procs td:nth-child(2), .procs td:nth-child(3) { text-align: right; }
+  .procs td:first-child { max-width: 11vw; overflow: hidden; text-overflow: ellipsis; }
+  .log { font-size: 0.9em; display: flex; flex-direction: column; justify-content: flex-end; height: 100%; overflow: hidden; }
+  .log p { margin: 0.1vw 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .log p .t { color: var(--dim); }
+  footer { grid-column: 1 / -1; display: flex; gap: 2vw; align-items: center; color: var(--dim); border-top: 1px solid var(--line); padding-top: 0.6vw; }
+  .meter { flex: 1; display: flex; gap: 2px; align-items: flex-end; height: 1.6vw; }
+  .meter i { flex: 1; background: var(--hi2); opacity: 0.85; min-height: 1px; }
+  .hidden { display: none !important; }
+  .cursor { animation: blink 1s steps(2) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+</style>
+</head>
+<body class="wallgates aberration">
+<div class="boot" id="boot"></div>
+<div class="screen" id="screen">
+  <header>
+    <pre class="logo" id="miniLogo"></pre>
+    <div>
+      <h1>WALLGATES // SYSTEM</h1>
+      <div class="meta" id="hostLine">—</div>
+      <div class="meta" id="opLine"></div>
+    </div>
+    <div class="clock"><b id="time">--:--</b><span class="k" id="date"></span></div>
+  </header>
+
+  <section class="panel" data-title="CPU" id="cpuPanel" style="grid-row: span 2">
+    <div class="k" id="cpuName">—</div>
+    <div class="row"><span class="big" id="cpuPct">--%</span><span class="big" id="cpuTemp">--°</span></div>
+    <div class="bar" id="cpuBar"></div>
+    <div class="row"><span><span class="k">FREQ </span><span id="cpuFreq">—</span></span><span><span class="k">PWR </span><span id="cpuPower">—</span></span><span><span class="k">PROC </span><span id="procCount">—</span></span></div>
+    <canvas class="graph" id="cpuGraph"></canvas>
+    <div class="cores" id="cores"></div>
+    <div style="margin-top:1vw">
+      <div class="row"><span class="k">MEMORY</span><span id="memText">—</span></div>
+      <div class="bar" id="memBar"></div>
+      <div class="row"><span class="k">SWAP</span><span id="swapText">—</span></div>
+      <div class="row"><span class="k">UPTIME</span><span id="uptime">—</span></div>
+    </div>
+  </section>
+
+  <section class="panel" data-title="GPU" id="gpuPanel">
+    <div class="k" id="gpuName">—</div>
+    <div class="row"><span class="big" id="gpuPct">--%</span><span class="big" id="gpuTemp">--°</span></div>
+    <div class="bar" id="gpuBar"></div>
+    <div class="row"><span class="k">VRAM</span><span id="vramText">—</span></div>
+    <div class="bar" id="vramBar"></div>
+    <canvas class="graph" id="gpuGraph"></canvas>
+    <div class="row"><span><span class="k">FAN </span><span id="gpuFan">—</span></span><span><span class="k">PWR </span><span id="gpuPower">—</span></span></div>
+  </section>
+
+  <section class="panel" data-title="TOP PROCESSES" id="procPanel">
+    <table class="procs"><tbody id="procs"></tbody></table>
+  </section>
+
+  <section class="panel" data-title="STORAGE / NETWORK" id="ioPanel">
+    <div id="disks"></div>
+    <div id="netBox" style="margin-top:0.6vw">
+      <div class="row"><span><span class="k">▼ DOWN </span><span id="rx">—</span></span><span><span class="k">▲ UP </span><span id="tx">—</span></span></div>
+      <canvas class="graph" id="netGraph"></canvas>
+    </div>
+  </section>
+
+  <section class="panel" data-title="SYSTEM LOG" id="logPanel">
+    <div class="log" id="log"></div>
+  </section>
+
+  <footer>
+    <span id="sources">SENSORS: —</span>
+    <div class="meter" id="meter"></div>
+    <span>WALLGATES OS <span class="cursor">█</span></span>
+  </footer>
+</div>
+<div class="fx vig"></div>
+<div class="fx scan"></div>
+<canvas class="fx noise" id="noise"></canvas>
+<script>
+// System Terminal — Wallgates built-in wallpaper (CC BY 4.0).
+const $ = (id) => document.getElementById(id);
+const LOGO = [
+  '            ▄▄▄██████▄▄▄',
+  '         ▄██▀▀ .:░░:. ▀▀██▄',
+  '       ▄█▀   .:░▒▓▓▒░:.   ▀█▄',
+  '      ██   .:░▒▓▓▓▓▓▓▒░:.   ██',
+  '     ██  .:░▒▓▓▓▓▓▓▓▓▓▓▒░:.  ██',
+  '     ██  :░▒▓▓▓▓▓▓▓▓▓▓▓▓▒░:  ██',
+  '     ██  ~~~~~~~~~~~~~~~~~~  ██',
+  '     ██  ░▒▒▓▓▓▓▓▓▓▓▓▓▓▓▒▒░  ██',
+  '     ██  ~ ~~ ~~~ ~~~ ~~ ~   ██',
+  '     ██  ░░▒▒▒▒▒▒▒▒▒▒▒▒▒▒░░  ██',
+  '     ██   ~~  ~~~  ~~~  ~~   ██',
+  '  ▀▀▀██▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀▀██▀▀▀',
+].join('\n');
+let o = {}, s = null, booted = false;
+const hist = { cpu: [], gpu: [], rx: [], tx: [] };
+const logLines = [];
+const lang = navigator.language || 'en-US';
+const alerts = {};
+
+const pct = (v) => (v == null ? '--' : Math.round(v)) + '%';
+const bytes = (b) => { if (b == null) return '—'; const u = ['B', 'KB', 'MB', 'GB', 'TB']; let i = 0; while (b >= 1024 && i < 4) { b /= 1024; i++; } return `${b.toFixed(b < 10 && i ? 1 : 0)} ${u[i]}`; };
+const rate = (b) => bytes(b) + '/s';
+const temp = (c) => c == null ? '--°' : o.fahrenheit ? `${Math.round(c * 9 / 5 + 32)}°F` : `${Math.round(c)}°C`;
+function bar(v, width = 28) {
+  const n = Math.round(Math.max(0, Math.min(100, v || 0)) / 100 * width);
+  const span = document.createElement('span');
+  span.append('[', '█'.repeat(n));
+  const e = document.createElement('span'); e.className = 'e'; e.textContent = '·'.repeat(width - n);
+  span.append(e, ']');
+  return span;
+}
+function setBar(id, v, w) { $(id).replaceChildren(bar(v, w)); }
+function level(elm, v, warnAt, badAt) { elm.classList.toggle('warn', v != null && v >= warnAt && v < badAt); elm.classList.toggle('bad', v != null && v >= badAt); }
+
+function log(msg, kind = '') {
+  const t = new Date().toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+  logLines.push({ t, msg, kind });
+  while (logLines.length > 40) logLines.shift();
+  if (!o.showLog) return;
+  $('log').replaceChildren(...logLines.slice(-18).map((l) => {
+    const p = document.createElement('p');
+    const ts = document.createElement('span'); ts.className = 't'; ts.textContent = `[${l.t}] `;
+    const m = document.createElement('span'); m.textContent = l.msg; if (l.kind) m.className = l.kind;
+    p.append(ts, m); return p;
+  }));
+}
+function alertOnce(key, on, msg) {
+  if (on && !alerts[key]) log(msg, 'bad');
+  if (!on && alerts[key]) log(`${key.toUpperCase()} back to normal`, '');
+  alerts[key] = on;
+}
+
+function graph(id, series, max, color2) {
+  const c = $(id); if (!c || !c.offsetWidth) return;
+  const w = c.width = c.offsetWidth * devicePixelRatio, h = c.height = c.offsetHeight * devicePixelRatio;
+  const g = c.getContext('2d');
+  const css = getComputedStyle(document.body);
+  g.strokeStyle = css.getPropertyValue('--line'); g.lineWidth = 1;
+  for (let i = 1; i < 4; i++) { g.beginPath(); g.moveTo(0, (h / 4) * i); g.lineTo(w, (h / 4) * i); g.stroke(); }
+  series.forEach((arr, k) => {
+    if (arr.length < 2) return;
+    const m = max || Math.max(1, ...series.flat());
+    g.beginPath();
+    arr.forEach((v, i) => { const x = (i / 59) * w, y = h - (v / m) * (h - 2) - 1; i ? g.lineTo(x, y) : g.moveTo(x, y); });
+    g.strokeStyle = css.getPropertyValue(k ? (color2 || '--hi2') : '--hi'); g.lineWidth = 1.6 * devicePixelRatio; g.stroke();
+  });
+}
+function push(arr, v) { arr.push(v ?? 0); while (arr.length > 60) arr.shift(); }
+
+function render() {
+  if (!s) return;
+  $('hostLine').textContent = `${s.host || 'HOST'} · ${s.os || ''}`;
+  $('opLine').textContent = `OPERATOR ${String(o.operator || 'OPERATOR').toUpperCase()} · ${s.processCount} PROCESSES`;
+  $('cpuName').textContent = s.cpuName || 'CPU';
+  $('cpuPct').textContent = pct(s.cpu); level($('cpuPct'), s.cpu, o.loadMax - 10, o.loadMax);
+  $('cpuTemp').textContent = temp(s.cpuTemp); level($('cpuTemp'), s.cpuTemp, o.cpuTempMax - 8, o.cpuTempMax);
+  setBar('cpuBar', s.cpu, 30);
+  $('cpuFreq').textContent = s.cpuFreq ? `${(s.cpuFreq / 1000).toFixed(2)} GHz` : '—';
+  $('cpuPower').textContent = s.cpuPower != null ? `${Math.round(s.cpuPower)} W` : '—';
+  $('procCount').textContent = s.processCount ?? '—';
+  $('cores').replaceChildren(...(s.cores || []).map((c, i) => {
+    const d = document.createElement('div');
+    d.textContent = `C${String(i).padStart(2, '0')} ${String(Math.round(c)).padStart(3)}%`;
+    level(d, c, o.loadMax - 10, o.loadMax); return d;
+  }));
+  $('memText').textContent = `${bytes(s.memoryUsed)} / ${bytes(s.memoryTotal)} (${pct(s.memory)})`;
+  setBar('memBar', s.memory, 30);
+  $('swapText').textContent = s.swapTotal ? `${bytes(s.swapUsed)} / ${bytes(s.swapTotal)}` : '—';
+  const up = s.uptime || 0;
+  $('uptime').textContent = `${Math.floor(up / 86400)}d ${String(Math.floor(up % 86400 / 3600)).padStart(2, '0')}:${String(Math.floor(up % 3600 / 60)).padStart(2, '0')}`;
+
+  const g = s.gpu;
+  $('gpuName').textContent = g?.name || 'GPU data unavailable on this system';
+  $('gpuPct').textContent = pct(g?.usage); level($('gpuPct'), g?.usage, o.loadMax - 10, o.loadMax);
+  $('gpuTemp').textContent = temp(g?.temp); level($('gpuTemp'), g?.temp, o.gpuTempMax - 8, o.gpuTempMax);
+  setBar('gpuBar', g?.usage, 30);
+  const vr = g?.vramTotal ? (g.vramUsed || 0) / g.vramTotal * 100 : null;
+  $('vramText').textContent = g?.vramTotal ? `${bytes(g.vramUsed)} / ${bytes(g.vramTotal)}` : '—';
+  setBar('vramBar', vr, 30);
+  $('gpuFan').textContent = g?.fan ? `${g.fan} RPM` : '—';
+  $('gpuPower').textContent = g?.power != null ? `${Math.round(g.power)} W` : '—';
+
+  const procs = s.processes || [];
+  const maxCpu = Math.max(1, ...procs.map((p) => p.cpu));
+  $('procs').replaceChildren(...procs.slice(0, 10).map((p) => {
+    const tr = document.createElement('tr');
+    const n = document.createElement('td'); n.textContent = p.name + (p.count > 1 ? ` ×${p.count}` : '');
+    const c = document.createElement('td'); c.textContent = `${p.cpu.toFixed(1)}%`; level(c, p.cpu, 40, 80);
+    const m = document.createElement('td'); m.textContent = bytes(p.memory);
+    const b = document.createElement('td'); b.style.paddingLeft = '0.8em'; b.append(bar((p.cpu / maxCpu) * 100, 10));
+    tr.append(n, c, m, b); return tr;
+  }));
+
+  $('disks').replaceChildren(...(s.disks || []).filter((d) => !d.removable || d.total > 0).slice(0, 4).map((d) => {
+    const div = document.createElement('div');
+    const r = document.createElement('div'); r.className = 'row';
+    const a = document.createElement('span'); a.className = 'k'; a.textContent = (d.mount || d.name).replace(/\\$/, '');
+    const b = document.createElement('span'); b.textContent = `${bytes(d.used)} / ${bytes(d.total)}`;
+    r.append(a, b);
+    const bb = document.createElement('div'); bb.className = 'bar'; bb.append(bar(d.used / d.total * 100, 30));
+    div.append(r, bb); return div;
+  }));
+  $('rx').textContent = rate(s.net?.rx); $('tx').textContent = rate(s.net?.tx);
+
+  const srcs = s.sources?.temperatures;
+  $('sources').textContent = srcs === 'hwinfo' ? 'SENSORS: HWiNFO SHARED MEMORY' : srcs === 'gpu-driver' ? 'SENSORS: GPU DRIVER · CPU TEMP NEEDS HWiNFO' : srcs === 'system' ? 'SENSORS: SYSTEM' : 'SENSORS: LOAD ONLY';
+
+  push(hist.cpu, s.cpu); push(hist.gpu, g?.usage); push(hist.rx, s.net?.rx); push(hist.tx, s.net?.tx);
+  graph('cpuGraph', [hist.cpu], 100); graph('gpuGraph', [hist.gpu], 100); graph('netGraph', [hist.rx, hist.tx], 0);
+
+  alertOnce('cpu temp', s.cpuTemp != null && s.cpuTemp >= o.cpuTempMax, `ALERT CPU TEMPERATURE ${temp(s.cpuTemp)}`);
+  alertOnce('gpu temp', g?.temp != null && g.temp >= o.gpuTempMax, `ALERT GPU TEMPERATURE ${temp(g.temp)}`);
+  alertOnce('cpu load', s.cpu >= o.loadMax, `CPU LOAD SPIKE ${pct(s.cpu)} — TOP: ${procs[0]?.name || '?'}`);
+  alertOnce('memory', s.memory >= 90, `MEMORY PRESSURE ${pct(s.memory)}`);
+}
+
+function applyLook() {
+  document.body.className = [o.theme || 'wallgates', o.aberration ? 'aberration' : '', o.flicker ? 'flicker' : '', Wallgates.paused ? 'paused' : ''].join(' ');
+  const st = document.documentElement.style;
+  st.setProperty('--fs', o.fontSize ?? 1); st.setProperty('--glow', o.glow ?? 0.55); st.setProperty('--scan', o.scanlines ?? 0.35);
+  st.setProperty('--noise', o.noise ?? 0.08); st.setProperty('--vig', o.vignette ?? 0.55);
+  $('gpuPanel').classList.toggle('hidden', !o.showGpu);
+  $('procPanel').classList.toggle('hidden', !o.showProcs);
+  $('ioPanel').classList.toggle('hidden', !o.showDisks && !o.showNet);
+  $('disks').classList.toggle('hidden', !o.showDisks);
+  $('netBox').classList.toggle('hidden', !o.showNet);
+  $('logPanel').classList.toggle('hidden', !o.showLog);
+  $('meter').classList.toggle('hidden', !o.showAudio);
+  $('miniLogo').classList.toggle('hidden', !o.showLogo);
+  render();
+}
+
+function tickClock() {
+  const now = new Date();
+  $('time').textContent = now.toLocaleTimeString(lang, { hour: '2-digit', minute: '2-digit', hour12: false });
+  $('date').textContent = now.toLocaleDateString(lang, { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' }).toUpperCase();
+}
+
+// Boot sequence: the Wallgates gate, then a few lines of "firmware".
+async function bootSequence() {
+  const box = $('boot');
+  if (!o.boot) { box.remove(); booted = true; return; }
+  const pre = document.createElement('pre'); pre.textContent = LOGO; pre.style.fontSize = '1.9em';
+  const text = document.createElement('div'); text.style.marginTop = '2vw';
+  box.append(pre, text);
+  const steps = ['WALLGATES OS · LIVE WALLPAPER KERNEL', 'OPENING GATE ................. OK', 'ATTACHING TO DESKTOP ......... OK',
+    'PROBING CPU / GPU / SENSORS .. OK', 'MOUNTING FILESYSTEMS ......... OK', 'LINK ESTABLISHED. WELCOME, ' + String(o.operator || 'OPERATOR').toUpperCase() + '.'];
+  for (const line of steps) { text.textContent += line + '\n'; await new Promise((r) => setTimeout(r, 380)); }
+  await new Promise((r) => setTimeout(r, 600));
+  box.style.transition = 'opacity .6s'; box.style.opacity = '0';
+  setTimeout(() => box.remove(), 650);
+  booted = true;
+}
+
+// Film-grain noise, cheap: a tiny canvas scaled up, redrawn ~12 fps.
+const nc = $('noise'), nx = nc.getContext('2d');
+nc.width = 160; nc.height = 90;
+function noise() {
+  if (!Wallgates.paused && (o.noise ?? 0.08) > 0) {
+    const img = nx.createImageData(160, 90);
+    for (let i = 0; i < img.data.length; i += 4) { const v = Math.random() * 255; img.data[i] = img.data[i + 1] = img.data[i + 2] = v; img.data[i + 3] = 255; }
+    nx.putImageData(img, 0, 0);
+  }
+  setTimeout(noise, 85);
+}
+
+let started = false;
+Wallgates.on('properties', (v) => {
+  o = v; applyLook();
+  if (!started) { started = true; $('miniLogo').textContent = LOGO; log('WALLGATES SYSTEM MONITOR ONLINE'); bootSequence(); }
+});
+Wallgates.on('pause', () => applyLook());
+Wallgates.on('system', (d) => {
+  const first = !s; s = d;
+  if (first) {
+    log(`HOST ${d.host || '?'} · ${d.cpuName || 'CPU'} · ${(d.cores || []).length} THREADS`);
+    if (d.gpu?.name) log(`GPU ${d.gpu.name} · ${bytes(d.gpu.vramTotal)} VRAM`);
+    log(d.sources?.temperatures === 'hwinfo' ? 'SENSORS: HWiNFO shared memory connected' : 'TIP: run HWiNFO with Shared Memory Support for CPU temperature', d.sources?.temperatures === 'hwinfo' ? '' : 'warn');
+  }
+  render();
+});
+Wallgates.on('audio', ({ bands }) => {
+  if (!o.showAudio || Wallgates.paused) return;
+  const m = $('meter');
+  if (m.children.length !== 32) m.replaceChildren(...Array.from({ length: 32 }, () => document.createElement('i')));
+  for (let i = 0; i < 32; i++) m.children[i].style.height = `${Math.max(2, (bands[i * 2] || 0) * 100)}%`;
+});
+setInterval(tickClock, 1000); tickClock(); noise();
+</script>
+</body>
+</html>

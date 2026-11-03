@@ -1,0 +1,192 @@
+{
+  "name": "System Terminal",
+  "author": "Wallgates",
+  "description": "Every nerd stat on a retro CRT terminal: CPU and GPU load and temperatures, per-core graphs, VRAM, RAM, disks, network, top processes and a live system log. Boots with the Wallgates gate.",
+  "type": "html",
+  "entry": "index.html",
+  "preview": "preview.jpg",
+  "license": "CC-BY-4.0",
+  "version": "1.0.0",
+  "tags": [
+    "system",
+    "monitor",
+    "terminal",
+    "hardware",
+    "temperature",
+    "nerd",
+    "retro"
+  ],
+  "capabilities": [
+    "system",
+    "audio"
+  ],
+  "properties": {
+    "g1": {
+      "label": "Display",
+      "type": "group"
+    },
+    "theme": {
+      "label": "Theme",
+      "type": "select",
+      "default": "wallgates",
+      "options": [
+        {
+          "value": "wallgates",
+          "label": "Wallgates neon"
+        },
+        {
+          "value": "mono",
+          "label": "Monochrome"
+        },
+        {
+          "value": "amber",
+          "label": "Amber CRT"
+        },
+        {
+          "value": "green",
+          "label": "Green phosphor"
+        }
+      ]
+    },
+    "operator": {
+      "label": "Operator name",
+      "type": "text",
+      "default": "OPERATOR"
+    },
+    "fontSize": {
+      "label": "Text size",
+      "type": "slider",
+      "min": 0.6,
+      "max": 1.6,
+      "step": 0.05,
+      "default": 1
+    },
+    "boot": {
+      "label": "Boot sequence on start",
+      "type": "bool",
+      "default": true
+    },
+    "fahrenheit": {
+      "label": "Use \u00b0F",
+      "type": "bool",
+      "default": false
+    },
+    "g2": {
+      "label": "Panels",
+      "type": "group"
+    },
+    "showGpu": {
+      "label": "GPU",
+      "type": "bool",
+      "default": true
+    },
+    "showDisks": {
+      "label": "Disks",
+      "type": "bool",
+      "default": true
+    },
+    "showNet": {
+      "label": "Network",
+      "type": "bool",
+      "default": true
+    },
+    "showProcs": {
+      "label": "Top processes",
+      "type": "bool",
+      "default": true
+    },
+    "showLog": {
+      "label": "System log",
+      "type": "bool",
+      "default": true
+    },
+    "showAudio": {
+      "label": "Audio meter",
+      "type": "bool",
+      "default": true
+    },
+    "showLogo": {
+      "label": "ASCII logo",
+      "type": "bool",
+      "default": true
+    },
+    "g3": {
+      "label": "Alerts",
+      "type": "group"
+    },
+    "cpuTempMax": {
+      "label": "CPU temperature alert (\u00b0C)",
+      "type": "slider",
+      "min": 50,
+      "max": 105,
+      "step": 1,
+      "default": 85
+    },
+    "gpuTempMax": {
+      "label": "GPU temperature alert (\u00b0C)",
+      "type": "slider",
+      "min": 50,
+      "max": 105,
+      "step": 1,
+      "default": 83
+    },
+    "loadMax": {
+      "label": "Load alert (%)",
+      "type": "slider",
+      "min": 50,
+      "max": 100,
+      "step": 1,
+      "default": 92
+    },
+    "n1": {
+      "label": "CPU temperature on Windows needs HWiNFO (free) running with \u201cShared Memory Support\u201d. GPU temperature works out of the box on recent drivers.",
+      "type": "note"
+    },
+    "g4": {
+      "label": "CRT effects",
+      "type": "group"
+    },
+    "scanlines": {
+      "label": "Scanlines",
+      "type": "slider",
+      "min": 0,
+      "max": 1,
+      "step": 0.05,
+      "default": 0.35
+    },
+    "noise": {
+      "label": "Noise",
+      "type": "slider",
+      "min": 0,
+      "max": 0.5,
+      "step": 0.01,
+      "default": 0.05
+    },
+    "glow": {
+      "label": "Glow",
+      "type": "slider",
+      "min": 0,
+      "max": 1,
+      "step": 0.05,
+      "default": 0.55
+    },
+    "aberration": {
+      "label": "Chromatic aberration",
+      "type": "bool",
+      "default": true
+    },
+    "vignette": {
+      "label": "Vignette",
+      "type": "slider",
+      "min": 0,
+      "max": 1,
+      "step": 0.05,
+      "default": 0.55
+    },
+    "flicker": {
+      "label": "Flicker",
+      "type": "bool",
+      "default": false
+    }
+  }
+}

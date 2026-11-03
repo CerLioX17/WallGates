@@ -12,7 +12,7 @@ use std::path::{Component, Path, PathBuf};
 pub const MANIFEST: &str = "wallpaper.json";
 
 /// Data a wallpaper may request. The user sees these as permission badges.
-pub const CAPABILITIES: &[&str] = &["audio", "mouse", "system", "media", "weather", "network"];
+pub const CAPABILITIES: &[&str] = &["audio", "mouse", "system", "media", "weather", "markets", "network"];
 
 #[derive(Clone, Debug)]
 pub struct Paths {

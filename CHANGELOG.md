@@ -1,5 +1,26 @@
 # Changelog
 
+## 0.3.0
+**Two new terminal wallpapers, fully customizable**
+- **Market Terminal**: your watchlist and portfolio on the desktop. Paste ISINs or tickers, choose the
+  exchange (Milan, Xetra, NYSE/Nasdaq, Euronext, London, …) and your currency. It shows prices, daily
+  change, day range, intraday charts, a scrolling index tape, world market clocks, portfolio value,
+  today's change, total P/L with currency conversion, allocation and top movers. Includes a privacy mode,
+  5 themes and CRT effects.
+- **System Terminal**: CPU load per core, frequency, temperature and power; GPU load, VRAM, temperature
+  and fan; memory, swap, disks, network graphs; a task-manager style top-processes list; a live system log
+  with temperature and load alerts. Boots with the Wallgates gate in ASCII. 4 themes and CRT effects
+  (scanlines, noise, glow, chromatic aberration, vignette, flicker).
+
+**Engine**
+- New `markets` capability: ISIN → listing resolution with your preferred exchange (cached), quotes,
+  intraday series and FX rates (Yahoo Finance, delayed, can be switched off).
+- `system` data now includes GPU usage, VRAM, temperature and fan on Windows (driver counters, no admin),
+  HWiNFO shared-memory sensors when available, per-core load, disks, network rates and top processes.
+- New property types `textarea`, `group` and `note` keep wallpapers with many options easy to manage.
+  Wallpaper Engine imports map their groups and notes too.
+
+
 ## 0.2.0
 A complete rewrite of the engine and the app, with a new brand.
 

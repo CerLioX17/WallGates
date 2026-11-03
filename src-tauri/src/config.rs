@@ -160,11 +160,13 @@ pub struct Integrations {
     pub gallery: bool,
     /// Check GitHub for new versions.
     pub update_check: bool,
+    /// Allow market data (Yahoo Finance) for wallpapers with the "markets" capability.
+    pub markets: bool,
 }
 
 impl Default for Integrations {
     fn default() -> Self {
-        Self { weather: false, location: None, fahrenheit: false, gallery: true, update_check: true }
+        Self { weather: false, location: None, fahrenheit: false, gallery: true, update_check: true, markets: true }
     }
 }
 

@@ -1,9 +1,14 @@
 //! Live data for interactive wallpapers. Every feed runs only while a visible,
 //! unpaused wallpaper declares the matching capability.
 
+pub mod hwinfo;
+pub mod markets;
 pub mod sun;
 pub mod system;
 pub mod weather;
+
+#[cfg(windows)]
+pub mod gpu_windows;
 
 #[cfg(windows)]
 pub mod audio;
