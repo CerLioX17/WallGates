@@ -191,6 +191,8 @@ input[type=color] { width: 44px; height: 28px; border: 1px solid var(--border); 
 .props { display: flex; flex-direction: column; gap: 14px; }
 .prop { display: flex; flex-direction: column; gap: 6px; }
 .prop.row { flex-direction: row; align-items: center; }
+.prop-file { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; }
+.prop-file-status { color: var(--muted, #8a8fb0); }
 .prop-area { width: 100%; resize: vertical; min-height: 90px; font: 12.5px/1.5 "Cascadia Code", Consolas, ui-monospace, monospace; }
 .prop-group { font: 600 12px var(--display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--violet); margin: 10px 0 -4px; padding-top: 12px; border-top: 1px solid var(--border); }
 .prop-group:first-child { border-top: 0; padding-top: 0; margin-top: 0; }

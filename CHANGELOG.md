@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.9.0
+**New: Trade Republic Portfolio.**
+- Load the CSV export from the Trade Republic app (Customize → Trade Republic export → Choose file…).
+  The file is read on your PC; only ISINs are used to look up prices.
+- Portfolio value, gain/loss **today, 1 week, 1 month, year to date, 1 year and all time** (net of
+  deposits), value-vs-deposits chart, monthly bars and yearly returns, holdings with live price, today's
+  move, gain/loss and weight, closed positions with realised P/L, allocation by asset class, dividends,
+  interest, fees, taxes and recent activity. Privacy mode hides all amounts.
+- Instruments without a public quote (turbos, warrants) are valued at the last trade price and marked ◆.
+- Markets feed: daily price history (~2 years) and Trade Republic CSV support.
+
+**Fonts.** Eight offline fonts bundled for every wallpaper (Share Tech Mono, JetBrains Mono, IBM Plex
+Mono, Fira Code, Space Mono, VT323, Orbitron, Rajdhani). System Terminal gets a font and a title-font picker.
+
+**System Terminal 4.2.** Missing sensors are simply not shown (no more "no sensor" or "—"). Workstation
+gets a live CPU/GPU/RAM/network performance chart, more depth (accent light, technical grid, corner
+brackets) and Orbitron titles.
+
+**Settings.** New `file` option type: wallpapers can ask for a local file (e.g. a CSV export).
+
 ## 0.8.0
 **System Terminal 4.1 — new Workstation style.**
 - New default style: a full-screen monitoring workstation with header and status bars, three

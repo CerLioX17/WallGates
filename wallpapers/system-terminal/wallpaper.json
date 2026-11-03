@@ -6,7 +6,7 @@
   "entry": "index.html",
   "preview": "preview.jpg",
   "license": "CC-BY-4.0",
-  "version": "4.1.0",
+  "version": "4.2.0",
   "tags": [
     "system",
     "monitor",
@@ -122,6 +122,25 @@
       "step": 0.05,
       "default": 1
     },
+    "titleFont": {
+      "label": "Title font (Workstation)",
+      "type": "select",
+      "default": "orbitron",
+      "options": [
+        {
+          "value": "same",
+          "label": "Same as text"
+        },
+        {
+          "value": "orbitron",
+          "label": "Orbitron — sci-fi"
+        },
+        {
+          "value": "rajdhani",
+          "label": "Rajdhani — technical"
+        }
+      ]
+    },
     "glow": {
       "label": "Text glow",
       "type": "slider",
@@ -188,6 +207,11 @@
       "type": "bool",
       "default": true
     },
+    "showPerf": {
+      "label": "Live performance chart",
+      "type": "bool",
+      "default": true
+    },
     "showLog": {
       "label": "Event log",
       "type": "bool",
@@ -230,6 +254,45 @@
     "gs": {
       "label": "Both styles",
       "type": "group"
+    },
+    "font": {
+      "label": "Font",
+      "type": "select",
+      "default": "auto",
+      "options": [
+        {
+          "value": "auto",
+          "label": "Automatic (Share Tech Mono / Cascadia)"
+        },
+        {
+          "value": "share-tech",
+          "label": "Share Tech Mono — sci-fi console"
+        },
+        {
+          "value": "jetbrains",
+          "label": "JetBrains Mono — modern coding"
+        },
+        {
+          "value": "plex",
+          "label": "IBM Plex Mono — classic IBM"
+        },
+        {
+          "value": "fira",
+          "label": "Fira Code — clean"
+        },
+        {
+          "value": "space",
+          "label": "Space Mono — retro-futuristic"
+        },
+        {
+          "value": "vt323",
+          "label": "VT323 — 80s CRT terminal"
+        },
+        {
+          "value": "cascadia",
+          "label": "Cascadia Mono — Windows Terminal"
+        }
+      ]
     },
     "operator": {
       "label": "User name in the prompt",

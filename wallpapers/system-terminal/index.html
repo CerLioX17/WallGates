@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <script src="/__wallgates/wallgates-sdk.js"></script>
+<link rel="stylesheet" href="/__wallgates/fonts.css">
 <link rel="stylesheet" href="workstation.css">
 <style>
   :root { --desk: #000; --bg: #0c0c0c; --fg: #cccccc; --hi: #f2f2f2; --dim: #767676; --lab: #3a96dd; --frame: #3a3a3a;
@@ -17,7 +18,7 @@
 
   * { box-sizing: border-box; }
   html, body { margin: 0; height: 100%; overflow: hidden; }
-  body { background: var(--desk); display: flex; padding: 3vh 2.5vw; font-family: "Cascadia Mono", "Cascadia Code", Consolas, "Lucida Console", ui-monospace, monospace; }
+  body { background: var(--desk); display: flex; padding: 3vh 2.5vw; font-family: var(--font, "Cascadia Mono"), "Cascadia Mono", Consolas, "Lucida Console", ui-monospace, monospace; }
   body.pos-right { justify-content: flex-end; align-items: center; }
   body.pos-left { justify-content: flex-start; align-items: center; }
   body.pos-center { justify-content: center; align-items: center; }
@@ -80,7 +81,7 @@ const lpad = (t, n) => { t = String(t); return t.length >= n ? t.slice(0, n) : '
 const clip = (t, n) => { t = String(t); return t.length > n ? t.slice(0, n - 1) + '…' : t; };
 const bytes = (b) => { if (b == null || !isFinite(b)) return '—'; const u = ['B', 'KB', 'MB', 'GB', 'TB']; let i = 0; while (b >= 1024 && i < 4) { b /= 1024; i++; } return `${b.toFixed(b < 10 && i ? 1 : 0)} ${u[i]}`; };
 const rate = (b) => (b == null ? '—' : bytes(b) + '/s');
-const deg = (c) => (c == null ? '—' : o.fahrenheit ? `${Math.round(c * 9 / 5 + 32)}°F` : `${Math.round(c)}°C`);
+const deg = (c) => (c == null ? '' : o.fahrenheit ? `${Math.round(c * 9 / 5 + 32)}°F` : `${Math.round(c)}°C`);
 const lvl = (v, warn, bad) => (v == null ? 'dim' : v >= bad ? 'bad' : v >= warn ? 'warn' : 'ok');
 const SPARK = '▁▂▃▄▅▆▇█';
 const spark = (arr, n, max = 100) => { const a = arr.slice(-n); const m = max || Math.max(1, ...a.filter((x) => x != null)); return pad(a.map((v) => (v == null ? ' ' : SPARK[Math.min(7, Math.floor((v / m) * 7.99))])).join(''), n); };
@@ -132,7 +133,7 @@ function cpuPanel() {
 function memPanel() {
   const L = [];
   const swapPct = s.swapTotal ? (s.swapUsed / s.swapTotal) * 100 : null;
-  L.push([seg('ram  '), ...meter(s.memory, 30, 80, 92), seg('  '), seg(lpad(s.ramTemp == null ? 'no sensor' : deg(s.ramTemp), 9), s.ramTemp == null ? 'dim' : lvl(s.ramTemp, 55, 70))]);
+  L.push([seg('ram  '), ...meter(s.memory, 30, 80, 92), seg('  '), seg(lpad(deg(s.ramTemp), 9), lvl(s.ramTemp, 55, 70))]);
   L.push([seg('used ', 'dim'), seg(pad(bytes(s.memoryUsed), 10), 'hi'), seg('free ', 'dim'), seg(pad(bytes(s.memoryAvailable), 10), 'hi'), seg('total ', 'dim'), seg(bytes(s.memoryTotal), 'hi')]);
   L.push([seg('swap '), ...meter(swapPct, 30, 50, 80, s.swapTotal ? bytes(s.swapUsed) : 'off')]);
   if (o.showHistory) L.push([seg('hist ', 'dim'), seg(spark(hist.ram, COLW - 5), 'acc')]);
@@ -168,7 +169,7 @@ function gpuPanel() {
   L.push([seg(clip(String(g.name || 'GPU data unavailable'), COLW), 'hi')]);
   L.push([seg('load '), ...meter(g.usage, 30, o.loadMax - 15, o.loadMax), seg('  '), seg(lpad(deg(g.temp), 6), lvl(g.temp, o.gpuTempMax - 10, o.gpuTempMax))]);
   L.push([seg('vram '), ...meter(vram, 30, 85, 95, g.vramTotal ? bytes(g.vramUsed) : 'n/a'), seg(`  / ${g.vramTotal ? bytes(g.vramTotal) : '—'}`, 'dim')]);
-  L.push([seg('hot  ', 'dim'), seg(pad(deg(g.hotspot), 8), 'hi'), seg('fan ', 'dim'), seg(pad(g.fan ? `${g.fan} rpm` : '—', 11), 'hi'), seg('power ', 'dim'), seg(g.power != null ? `${Math.round(g.power)} W` : '—', 'hi')]);
+  L.push([...(g.hotspot != null ? [seg('hot  ', 'dim'), seg(pad(deg(g.hotspot), 8), 'hi')] : []), seg('fan ', 'dim'), seg(pad(g.fan ? `${g.fan} rpm` : '—', 11), 'hi'), seg('power ', 'dim'), seg(g.power != null ? `${Math.round(g.power)} W` : '—', 'hi')]);
   if (o.showHistory) L.push([seg('hist ', 'dim'), seg(spark(hist.gpu, COLW - 5), 'acc')]);
   return L;
 }

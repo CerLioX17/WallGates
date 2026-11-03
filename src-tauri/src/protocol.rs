@@ -55,22 +55,42 @@ fn mime(path: &Path) -> &'static str {
 
 const SDK_JS: &str = include_str!("../../ui/sdk/wallgates-sdk.js");
 const WE_SHIM_JS: &str = include_str!("../../ui/sdk/we-shim.js");
+const FONTS_CSS: &str = include_str!("../../ui/sdk/fonts.css");
+/// Fonts bundled for wallpapers (OFL 1.1), served at /__wallgates/fonts/<file>.
+const FONTS: &[(&str, &[u8])] = &[
+    ("FiraCode.woff2", include_bytes!("../../ui/sdk/fonts/FiraCode.woff2")),
+    ("IBMPlexMono-400.woff2", include_bytes!("../../ui/sdk/fonts/IBMPlexMono-400.woff2")),
+    ("IBMPlexMono-600.woff2", include_bytes!("../../ui/sdk/fonts/IBMPlexMono-600.woff2")),
+    ("JetBrainsMono.woff2", include_bytes!("../../ui/sdk/fonts/JetBrainsMono.woff2")),
+    ("Orbitron.woff2", include_bytes!("../../ui/sdk/fonts/Orbitron.woff2")),
+    ("Rajdhani-500.woff2", include_bytes!("../../ui/sdk/fonts/Rajdhani-500.woff2")),
+    ("Rajdhani-700.woff2", include_bytes!("../../ui/sdk/fonts/Rajdhani-700.woff2")),
+    ("ShareTechMono.woff2", include_bytes!("../../ui/sdk/fonts/ShareTechMono.woff2")),
+    ("SpaceMono-400.woff2", include_bytes!("../../ui/sdk/fonts/SpaceMono-400.woff2")),
+    ("SpaceMono-700.woff2", include_bytes!("../../ui/sdk/fonts/SpaceMono-700.woff2")),
+    ("VT323.woff2", include_bytes!("../../ui/sdk/fonts/VT323.woff2")),
+];
 
 /// Allowed sources for wallpapers without the `network` capability.
 const OFFLINE_CSP: &str = "default-src 'self' http://wp.localhost wp: data: blob: 'unsafe-inline' 'unsafe-eval'; \
      form-action 'none'";
 
 fn internal(name: &str) -> Response<Vec<u8>> {
-    let body = match name {
-        "wallgates-sdk.js" => SDK_JS,
-        "we-shim.js" => WE_SHIM_JS,
-        _ => return status(StatusCode::NOT_FOUND),
+    let (body, mime): (&[u8], &str) = match name {
+        "wallgates-sdk.js" => (SDK_JS.as_bytes(), "text/javascript; charset=utf-8"),
+        "we-shim.js" => (WE_SHIM_JS.as_bytes(), "text/javascript; charset=utf-8"),
+        "fonts.css" => (FONTS_CSS.as_bytes(), "text/css; charset=utf-8"),
+        _ => match name.strip_prefix("fonts/").and_then(|f| FONTS.iter().find(|(n, _)| *n == f)) {
+            Some((_, bytes)) => (*bytes, "font/woff2"),
+            None => return status(StatusCode::NOT_FOUND),
+        },
     };
     Response::builder()
         .status(StatusCode::OK)
-        .header(header::CONTENT_TYPE, "text/javascript; charset=utf-8")
+        .header(header::CONTENT_TYPE, mime)
         .header(header::ACCESS_CONTROL_ALLOW_ORIGIN, "*")
-        .body(body.as_bytes().to_vec())
+        .header(header::CACHE_CONTROL, "max-age=86400")
+        .body(body.to_vec())
         .unwrap()
 }
 
@@ -200,6 +220,17 @@ pub fn handle(paths: &Paths, request: &Request<Vec<u8>>) -> Response<Vec<u8>> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn serves_bundled_fonts() {
+        assert_eq!(internal("fonts.css").status(), StatusCode::OK);
+        assert_eq!(internal("fonts/VT323.woff2").status(), StatusCode::OK);
+        assert_eq!(internal("fonts/../lib.rs").status(), StatusCode::NOT_FOUND);
+        for f in FONTS_CSS.split("/__wallgates/fonts/").skip(1) {
+            let file = &f[..f.find('\'').unwrap()];
+            assert!(FONTS.iter().any(|(n, _)| *n == file), "{file} missing");
+        }
+    }
 
     #[test]
     fn injects_early() {

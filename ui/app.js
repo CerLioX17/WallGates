@@ -384,6 +384,27 @@ function control(w, key, def, value) {
       return el('label', { class: 'prop' }, el('span', {}, label),
         el('textarea', { class: 'prop-area', rows: def.rows || 5, value: value ?? '', maxLength: 8000, spellcheck: false, placeholder: def.placeholder || '', oninput: (e) => send(e.target.value) }));
     }
+    case 'file': {
+      // Reads a local text file (e.g. a CSV export) and stores its contents as the value. Stays on this PC.
+      const size = (n) => (n > 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`);
+      const status = el('small', { class: 'prop-file-status' }, value ? t('prop.file.loaded', { size: size(new Blob([value]).size) }) : t('prop.file.none'));
+      const input = el('input', {
+        type: 'file', accept: def.accept || '', hidden: true,
+        onchange: async (e) => {
+          const f = e.target.files?.[0];
+          if (!f) return;
+          if (f.size > 2 * 1048576) { status.textContent = t('prop.file.tooBig'); return; }
+          const text = await f.text();
+          await set(text);
+          status.textContent = `${f.name} · ${t('prop.file.loaded', { size: size(f.size) })}`;
+        },
+      });
+      return el('div', { class: 'prop' }, el('span', {}, label),
+        el('div', { class: 'prop-file' },
+          el('button', { class: 'btn small', onclick: () => input.click() }, t('prop.file.choose')),
+          value ? el('button', { class: 'btn small ghost', onclick: async () => { await set(''); status.textContent = t('prop.file.none'); } }, t('prop.file.clear')) : null,
+          status, input));
+    }
     case 'group':
       return el('h4', { class: 'prop-group' }, label);
     case 'note':

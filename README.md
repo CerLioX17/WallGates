@@ -43,6 +43,7 @@ Wallgates was designed from the most common complaints about existing wallpaper 
 - **Playlists**: rotate every N minutes (with shuffle) or switch by time of day / sunrise / sunset, with crossfade transitions.
 - **Audio-reactive**: system audio spectrum (what you hear, not the microphone) for shaders and web wallpapers.
 - **Interactive**: cursor parallax, now playing (Spotify, browsers, any media app), weather (Open-Meteo, no key).
+- **Trade Republic Portfolio**: load your Trade Republic CSV export and see value, gain/loss today, this week, month, year to date, 1 year and all time, holdings, allocation, dividends and costs. The file never leaves your PC.
 - **Market Terminal**: your ISIN watchlist and portfolio with live P/L, intraday charts, index tape and world market clocks.
 - **System Terminal**: CPU, GPU, RAM and SSD load and temperatures, top processes, network, fans and weather with UV and a 4-day forecast, as a full-screen monitoring workstation with a live event log (or a classic terminal window).
 - **Advanced sensors built in**: one click in Settings adds CPU/RAM temperatures and fans (LibreHardwareMonitor + PawnIO). Nothing else to install, and uninstalling Wallgates removes it too.
@@ -104,7 +105,7 @@ npm run build    # produce installers in src-tauri/target/release/bundle
 ## Privacy
 
 Wallgates has **no telemetry and no accounts**. It contacts the network only for:
-the gallery (GitHub), the update check (GitHub), and weather (Open-Meteo), each of which can be switched off in Settings.
+the gallery (GitHub), the update check (GitHub), weather (Open-Meteo) and market prices (Yahoo Finance, only the ISINs/tickers of wallpapers that show prices), each of which can be switched off in Settings.
 Wallpapers are offline unless they declare the `network` capability.
 
 ## Project layout
@@ -121,6 +122,15 @@ ui/                settings app (index/app.js) and wallpaper host (host.js), SDK
 wallpapers/        built-in wallpapers        gallery/   online gallery items
 branding/          logo & installer art generator
 ```
+
+## Code signing policy
+
+Windows releases will be signed through the [SignPath Foundation](https://signpath.org) programme for open-source projects.
+
+- **Builds**: every release is built from this public repository by GitHub Actions ([`build.yml`](.github/workflows/build.yml)); nothing is built or signed on a personal machine.
+- **Approvers / committers**: [CerLioX17](https://github.com/CerLioX17) (project owner). Every release is approved by the owner.
+- **What is signed**: only files built from this repository (`Wallgates.exe`, `WallgatesSensors.exe`, the installer). Bundled third-party libraries keep their own signatures.
+- **Privacy**: Wallgates sends no telemetry. Network access is listed under [Privacy](#privacy).
 
 ## Support the project
 

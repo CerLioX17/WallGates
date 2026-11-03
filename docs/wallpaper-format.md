@@ -56,6 +56,7 @@ Every property has a `label`, a `type` and a `default`.
 | `select` | `options`: `["a","b"]` or `[{value,label}]`  | the option value  |
 | `text`   | `placeholder`                                | string            |
 | `textarea` | `rows`, `placeholder`                      | multi-line string |
+| `file`   | `accept` (e.g. `".csv"`)                   | the file's text (max 2 MB), read on the user's PC |
 | `group`  | (no `default`)                               | section heading in the panel |
 | `note`   | (no `default`)                               | short explanation shown in the panel |
 
@@ -104,6 +105,8 @@ Wallpapers with the `markets` capability declare their instruments in these prop
 | `market` | preferred exchange for ISINs: `auto`, `milan`, `xetra`, `us`, `paris`, `amsterdam`, `london`, `madrid`, `swiss`, … |
 | `currency` | base currency for FX rates (e.g. `EUR`) |
 | `refresh` | seconds between updates (min 15) |
+| `tradeRepublicCsv` | a Trade Republic CSV export (`file` property): its ISINs and crypto are quoted, with daily history |
+| `history` | `true` to also receive ~2 years of daily closes per instrument (`history: [[unix, close], …]`) |
 
 `Wallgates.on('markets', d => ...)` receives `quotes[]` (`id`, `symbol`, `name`, `exchange`, `currency`,
 `price`, `change`, `changePct`, `previousClose`, `dayHigh`, `dayLow`, `state`, `spark[]`, …),
@@ -140,6 +143,12 @@ It can load files from its own folder with relative URLs.
 
 `Wallgates.values`, `Wallgates.paused` and `Wallgates.renderScale` are also available.
 See `wallpapers/dashboard` for a complete example.
+
+### Fonts
+
+Wallgates bundles offline fonts (SIL OFL) for every wallpaper: add
+`<link rel="stylesheet" href="/__wallgates/fonts.css">` and use `Share Tech Mono`, `JetBrains Mono`,
+`IBM Plex Mono`, `Fira Code`, `Space Mono`, `VT323`, `Orbitron` or `Rajdhani`.
 
 ### Raw messages
 

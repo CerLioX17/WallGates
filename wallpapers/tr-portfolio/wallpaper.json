@@ -1,0 +1,288 @@
+{
+  "name": "Trade Republic Portfolio",
+  "author": "Wallgates",
+  "description": "Your Trade Republic portfolio on the desktop: total value, gain or loss today, this week, month, year to date, 1 year and all time, value-vs-invested chart, monthly and yearly returns, holdings with live prices, allocation, dividends, interest, fees and taxes. Load the CSV export from the Trade Republic app: it stays on this PC. Not affiliated with Trade Republic.",
+  "type": "html",
+  "entry": "index.html",
+  "preview": "preview.jpg",
+  "license": "CC-BY-4.0",
+  "version": "1.0.0",
+  "tags": [
+    "finance",
+    "portfolio",
+    "stocks",
+    "etf",
+    "trade republic",
+    "markets",
+    "terminal"
+  ],
+  "capabilities": [
+    "markets"
+  ],
+  "properties": {
+    "g0": {
+      "label": "Portfolio",
+      "type": "group"
+    },
+    "tradeRepublicCsv": {
+      "label": "Trade Republic export (.csv)",
+      "type": "file",
+      "accept": ".csv,text/csv",
+      "default": ""
+    },
+    "n0": {
+      "label": "Trade Republic app → Profile → Transactions → Export (CSV). The file is read on this PC and only ISINs are used to fetch prices: names, IBANs and amounts never leave your computer.",
+      "type": "note"
+    },
+    "market": {
+      "label": "Price listing",
+      "type": "select",
+      "default": "xetra",
+      "options": [
+        {
+          "value": "xetra",
+          "label": "Xetra (EUR, closest to Trade Republic)"
+        },
+        {
+          "value": "milan",
+          "label": "Borsa Italiana (EUR)"
+        },
+        {
+          "value": "paris",
+          "label": "Euronext Paris (EUR)"
+        },
+        {
+          "value": "amsterdam",
+          "label": "Euronext Amsterdam (EUR)"
+        },
+        {
+          "value": "auto",
+          "label": "Automatic"
+        }
+      ]
+    },
+    "currency": {
+      "label": "Currency",
+      "type": "select",
+      "default": "EUR",
+      "options": [
+        "EUR",
+        "USD",
+        "CHF",
+        "GBP"
+      ]
+    },
+    "refresh": {
+      "label": "Price refresh (seconds)",
+      "type": "slider",
+      "min": 30,
+      "max": 600,
+      "step": 10,
+      "default": 60
+    },
+    "chartRange": {
+      "label": "Chart range",
+      "type": "select",
+      "default": "all",
+      "options": [
+        {
+          "value": "1m",
+          "label": "1 month"
+        },
+        {
+          "value": "3m",
+          "label": "3 months"
+        },
+        {
+          "value": "ytd",
+          "label": "Year to date"
+        },
+        {
+          "value": "1y",
+          "label": "1 year"
+        },
+        {
+          "value": "all",
+          "label": "Since the first deposit"
+        }
+      ]
+    },
+    "privacy": {
+      "label": "Privacy mode (hide amounts, show only %)",
+      "type": "bool",
+      "default": false
+    },
+    "includeCash": {
+      "label": "Count uninvested cash in the total",
+      "type": "bool",
+      "default": true
+    },
+    "g1": {
+      "label": "Look",
+      "type": "group"
+    },
+    "palette": {
+      "label": "Colours",
+      "type": "select",
+      "default": "midnight",
+      "options": [
+        {
+          "value": "midnight",
+          "label": "Midnight (emerald / rose)"
+        },
+        {
+          "value": "wallgates",
+          "label": "Wallgates (violet / cyan)"
+        },
+        {
+          "value": "terminal",
+          "label": "Amber terminal"
+        },
+        {
+          "value": "matrix",
+          "label": "Green phosphor"
+        },
+        {
+          "value": "custom",
+          "label": "Custom (colours below)"
+        }
+      ]
+    },
+    "accentColor": {
+      "label": "Accent (custom)",
+      "type": "color",
+      "default": "#8b5cf6"
+    },
+    "gainColor": {
+      "label": "Gain (custom)",
+      "type": "color",
+      "default": "#34d399"
+    },
+    "lossColor": {
+      "label": "Loss (custom)",
+      "type": "color",
+      "default": "#fb7185"
+    },
+    "bgColor": {
+      "label": "Background (custom)",
+      "type": "color",
+      "default": "#070912"
+    },
+    "font": {
+      "label": "Font",
+      "type": "select",
+      "default": "jetbrains",
+      "options": [
+        {
+          "value": "jetbrains",
+          "label": "JetBrains Mono — modern"
+        },
+        {
+          "value": "plex",
+          "label": "IBM Plex Mono — classic IBM"
+        },
+        {
+          "value": "share-tech",
+          "label": "Share Tech Mono — sci-fi console"
+        },
+        {
+          "value": "fira",
+          "label": "Fira Code — clean"
+        },
+        {
+          "value": "space",
+          "label": "Space Mono — retro-futuristic"
+        },
+        {
+          "value": "vt323",
+          "label": "VT323 — 80s CRT terminal"
+        },
+        {
+          "value": "cascadia",
+          "label": "Cascadia Mono — Windows Terminal"
+        }
+      ]
+    },
+    "titleFont": {
+      "label": "Title font",
+      "type": "select",
+      "default": "rajdhani",
+      "options": [
+        {
+          "value": "same",
+          "label": "Same as text"
+        },
+        {
+          "value": "rajdhani",
+          "label": "Rajdhani — technical"
+        },
+        {
+          "value": "orbitron",
+          "label": "Orbitron — sci-fi"
+        }
+      ]
+    },
+    "size": {
+      "label": "Size (% of screen)",
+      "type": "slider",
+      "min": 50,
+      "max": 100,
+      "step": 1,
+      "default": 100
+    },
+    "textSize": {
+      "label": "Text size",
+      "type": "slider",
+      "min": 0.7,
+      "max": 1.5,
+      "step": 0.05,
+      "default": 1
+    },
+    "glow": {
+      "label": "Glow",
+      "type": "slider",
+      "min": 0,
+      "max": 1,
+      "step": 0.05,
+      "default": 0.35
+    },
+    "g2": {
+      "label": "Panels",
+      "type": "group"
+    },
+    "showChart": {
+      "label": "Performance chart",
+      "type": "bool",
+      "default": true
+    },
+    "showMonthly": {
+      "label": "Monthly & yearly returns",
+      "type": "bool",
+      "default": true
+    },
+    "showAllocation": {
+      "label": "Allocation",
+      "type": "bool",
+      "default": true
+    },
+    "showIncome": {
+      "label": "Income, fees & taxes",
+      "type": "bool",
+      "default": true
+    },
+    "showActivity": {
+      "label": "Recent activity",
+      "type": "bool",
+      "default": true
+    },
+    "showClosed": {
+      "label": "Closed positions (realised P/L)",
+      "type": "bool",
+      "default": true
+    },
+    "n1": {
+      "label": "Prices: Yahoo Finance, delayed ~15 min, for information only. Instruments without a public quote (e.g. turbos/warrants) are valued at the last trade price.",
+      "type": "note"
+    }
+  }
+}

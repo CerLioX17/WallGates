@@ -49,6 +49,48 @@ pub struct Request {
     pub market: String,
     pub currency: String,
     pub refresh_secs: u64,
+    /// Also fetch ~2 years of daily closes (portfolio performance over time).
+    pub history: bool,
+}
+
+/// Split one CSV line, honouring double quotes ("a,b" and "" escapes).
+pub fn csv_fields(line: &str) -> Vec<String> {
+    let (mut out, mut cur, mut quoted) = (Vec::new(), String::new(), false);
+    let mut chars = line.chars().peekable();
+    while let Some(c) = chars.next() {
+        match c {
+            '"' if quoted && chars.peek() == Some(&'"') => { cur.push('"'); chars.next(); }
+            '"' => quoted = !quoted,
+            ',' if !quoted => out.push(std::mem::take(&mut cur)),
+            _ => cur.push(c),
+        }
+    }
+    out.push(cur);
+    out
+}
+
+/// Instruments found in a Trade Republic transaction export (CSV).
+/// Crypto (`asset_class` CRYPTO) is quoted against the euro, e.g. `XRP` → `XRP-EUR`.
+pub fn trade_republic_ids(csv: &str) -> BTreeSet<String> {
+    let mut lines = csv.lines();
+    let header = lines.next().map(csv_fields).unwrap_or_default();
+    let col = |name: &str| header.iter().position(|h| h.trim().eq_ignore_ascii_case(name));
+    let (Some(sym), Some(class)) = (col("symbol"), col("asset_class")) else { return BTreeSet::new() };
+    let mut ids = BTreeSet::new();
+    for line in lines {
+        let f = csv_fields(line);
+        let (Some(id), Some(c)) = (f.get(sym), f.get(class)) else { continue };
+        let id = id.trim().to_ascii_uppercase();
+        if id.is_empty() || id.len() > 16 || !id.chars().all(|c| c.is_ascii_alphanumeric()) {
+            continue;
+        }
+        if c.eq_ignore_ascii_case("CRYPTO") {
+            ids.insert(format!("{id}-EUR"));
+        } else if is_isin(&id) {
+            ids.insert(id);
+        }
+    }
+    ids
 }
 
 fn tokens(s: &str) -> impl Iterator<Item = String> + '_ {
@@ -73,8 +115,11 @@ pub fn request_from(values: &Map<String, Value>) -> Request {
             }
         }
     }
+    let tr = s("tradeRepublicCsv");
+    ids.extend(trade_republic_ids(tr));
     let ids: BTreeSet<String> = ids.into_iter().take(80).collect();
     Request {
+        history: !tr.trim().is_empty() || values.get("history").and_then(Value::as_bool).unwrap_or(false),
         ids,
         market: s("market").to_ascii_lowercase(),
         currency: {
@@ -179,6 +224,22 @@ pub fn parse_chart(id: &str, chart: &Value) -> Option<Value> {
 pub struct Markets {
     cache_file: PathBuf,
     symbols: HashMap<String, String>,
+    /// symbol → (fetched at, daily [unix time, close] pairs). Daily data changes slowly: refreshed every 3 h.
+    history: HashMap<String, (std::time::Instant, Value)>,
+}
+
+/// Daily closes from a Yahoo chart response, as `[[unix, close], ...]`.
+pub fn parse_history(chart: &Value) -> Value {
+    let r = chart.pointer("/chart/result/0");
+    let ts = r.and_then(|r| r.get("timestamp")).and_then(Value::as_array);
+    let cl = r.and_then(|r| r.pointer("/indicators/quote/0/close")).and_then(Value::as_array);
+    let (Some(ts), Some(cl)) = (ts, cl) else { return json!([]) };
+    Value::Array(
+        ts.iter()
+            .zip(cl)
+            .filter_map(|(t, c)| Some(json!([t.as_i64()?, (c.as_f64()? * 10000.0).round() / 10000.0])))
+            .collect(),
+    )
 }
 
 impl Markets {
@@ -188,7 +249,7 @@ impl Markets {
             .ok()
             .and_then(|b| serde_json::from_slice(&b).ok())
             .unwrap_or_default();
-        Self { cache_file, symbols }
+        Self { cache_file, symbols, history: HashMap::new() }
     }
 
     fn resolve(&mut self, agent: &ureq::Agent, id: &str, market: &str) -> Result<String, String> {
@@ -215,18 +276,38 @@ impl Markets {
     }
 
     fn chart(agent: &ureq::Agent, symbol: &str) -> Result<Value, String> {
+        Self::chart_range(agent, symbol, "1d", "5m")
+    }
+
+    fn chart_range(agent: &ureq::Agent, symbol: &str, range: &str, interval: &str) -> Result<Value, String> {
         let url = format!(
             "https://query1.finance.yahoo.com/v8/finance/chart/{}",
             percent_encoding::utf8_percent_encode(symbol, percent_encoding::NON_ALPHANUMERIC)
         );
         agent
             .get(&url)
-            .query("range", "1d")
-            .query("interval", "5m")
+            .query("range", range)
+            .query("interval", interval)
             .call()
             .map_err(|e| e.to_string())?
             .into_json()
             .map_err(|e| e.to_string())
+    }
+
+    fn daily(&mut self, agent: &ureq::Agent, symbol: &str) -> Value {
+        if let Some((at, v)) = self.history.get(symbol) {
+            if at.elapsed() < Duration::from_secs(3 * 3600) {
+                return v.clone();
+            }
+        }
+        match Self::chart_range(agent, symbol, "2y", "1d") {
+            Ok(c) => {
+                let v = parse_history(&c);
+                self.history.insert(symbol.to_string(), (std::time::Instant::now(), v.clone()));
+                v
+            }
+            Err(_) => self.history.get(symbol).map(|(_, v)| v.clone()).unwrap_or_else(|| json!([])),
+        }
     }
 
     /// Fetch everything the requests need. Never fails as a whole: per-instrument errors are reported.
@@ -247,6 +328,14 @@ impl Markets {
                     .resolve(&agent, id, &req.market)
                     .and_then(|sym| Self::chart(&agent, &sym))
                     .and_then(|c| parse_chart(id, &c).ok_or_else(|| format!("{id}: no data")));
+                let result = result.map(|mut q| {
+                    if req.history {
+                        if let Some(sym) = q.get("symbol").and_then(Value::as_str).map(str::to_string) {
+                            q["history"] = self.daily(&agent, &sym);
+                        }
+                    }
+                    q
+                });
                 match result {
                     Ok(q) => {
                         if let Some(c) = q.get("currency").and_then(Value::as_str) {
@@ -313,6 +402,22 @@ mod tests {
         assert_eq!(r.market, "milan");
         assert_eq!(r.currency, "EUR");
         assert_eq!(r.refresh_secs, 15);
+    }
+
+    #[test]
+    fn reads_trade_republic_export() {
+        let csv = "\"datetime\",\"category\",\"type\",\"asset_class\",\"name\",\"symbol\",\"shares\"\n\
+            \"2025-03-19\",\"TRADING\",\"BUY\",\"FUND\",\"Core MSCI World, USD\",\"IE00B4L5Y983\",\"2\"\n\
+            \"2026-07-14\",\"TRADING\",\"BUY\",\"CRYPTO\",\"XRP\",\"XRP\",\"103\"\n\
+            \"2025-03-13\",\"CASH\",\"TRANSFER_INBOUND\",\"\",\"\",\"\",\"\"\n";
+        let ids = trade_republic_ids(csv);
+        assert_eq!(ids.into_iter().collect::<Vec<_>>(), vec!["IE00B4L5Y983".to_string(), "XRP-EUR".to_string()]);
+        assert_eq!(csv_fields("\"a, b\",\"c\"\"d\",e"), vec!["a, b", "c\"d", "e"]);
+        let v: Map<String, Value> = serde_json::from_value(json!({ "tradeRepublicCsv": csv })).unwrap();
+        let r = request_from(&v);
+        assert!(r.history && r.ids.contains("XRP-EUR"));
+        let h = parse_history(&json!({ "chart": { "result": [{ "timestamp": [1, 2, 3], "indicators": { "quote": [{ "close": [10.0, null, 12.5] }] } }] } }));
+        assert_eq!(h, json!([[1, 10.0], [3, 12.5]]));
     }
 
     #[test]

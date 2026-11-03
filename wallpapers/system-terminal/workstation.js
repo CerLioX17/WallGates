@@ -5,6 +5,8 @@
   const lang = navigator.language || 'en-US';
   let o = {}, s = null, prev = null, w = null, media = null, booted = false, booting = false, built = false;
   const log = [], last = {};
+  const H = { cpu: [], gpu: [], ram: [], net: [] };
+  const pushH = (a, v) => { a.push(v ?? null); while (a.length > 90) a.shift(); };
   let audio = null, smooth = new Array(32).fill(0), bass = 0, treble = 0;
 
   const PALETTES = {
@@ -35,7 +37,7 @@
   const esc = (t) => String(t ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
   const bytes = (b) => { if (b == null || !isFinite(b)) return '—'; const u = ['B', 'KB', 'MB', 'GB', 'TB']; let i = 0; while (b >= 1024 && i < 4) { b /= 1024; i++; } return `${b.toFixed(b < 10 && i ? 1 : 0)} ${u[i]}`; };
   const rate = (b) => (b == null ? '—' : bytes(b) + '/s');
-  const deg = (c) => (c == null ? '—' : o.fahrenheit ? `${Math.round(c * 9 / 5 + 32)}°F` : `${Math.round(c)}°C`);
+  const deg = (c) => (c == null ? '' : o.fahrenheit ? `${Math.round(c * 9 / 5 + 32)}°F` : `${Math.round(c)}°C`);
   const pct = (v, d = 0) => (v == null ? '—' : `${v.toFixed(d)}%`);
   const lv = (v, warn, bad) => (v == null ? '' : v >= bad ? 'bad' : v >= warn ? 'warn' : 'ok');
   const tagFor = (l) => (l === 'bad' ? '<span class="tag bad-t">CRITICAL</span>' : l === 'warn' ? '<span class="tag warn-t">CAUTION</span>' : l === 'ok' ? '<span class="tag ok">NOMINAL</span>' : '<span class="tag dim">N/A</span>');
@@ -66,6 +68,7 @@
           <div class="ws-sec" id="wsWxSec"><div class="ws-title">WEATHER <small id="wsWxSub"></small></div><div id="wsWx"></div></div>
         </div>
         <div class="ws-fc" id="wsFcSec"><div class="ws-title">FORECAST <small>next 12 hours · 4 days</small></div><div class="ws-cells ws-hours" id="wsHours"></div><div class="ws-cells" id="wsDays" style="margin-top:0.45em"></div></div>
+        <div class="ws-perf" id="wsPerfSec"><div class="ws-title">PERFORMANCE</div><div class="ws-legend" id="wsLegend"></div><canvas id="wsPerf"></canvas></div>
         <div class="ws-logwrap" id="wsLogSec"><div class="ws-title">EVENT LOG <small id="wsLogSub">live</small></div><div class="ws-log" id="wsLog"></div></div>
       </section>
       <section class="ws-col">
@@ -86,7 +89,18 @@
   }
 
   // ------------------------------------------------------------ look
+  const FONTS = { 'share-tech': "'Share Tech Mono'", jetbrains: "'JetBrains Mono'", plex: "'IBM Plex Mono'", fira: "'Fira Code'", space: "'Space Mono'", vt323: "'VT323'", cascadia: "'Cascadia Mono', Consolas" };
+  const TITLE_FONTS = { same: 'inherit', orbitron: "'Orbitron'", rajdhani: "'Rajdhani'" };
+  function applyFonts() {
+    const r = document.documentElement.style;
+    const ws = o.style !== 'classic';
+    r.setProperty('--font', FONTS[o.font] || (ws ? FONTS['share-tech'] : FONTS.cascadia));
+    r.setProperty('--title-font', TITLE_FONTS[o.titleFont] || 'inherit');
+    // VT323 is drawn small: compensate so every font reads at a similar size.
+    r.setProperty('--font-zoom', o.font === 'vt323' ? 1.3 : 1);
+  }
   function applyLook() {
+    applyFonts();
     const on = o.style !== 'classic';
     document.body.classList.toggle('ws', on);
     if (!on) return;
@@ -224,7 +238,7 @@
     L.push(row('GPU', `${pct(g.usage, 1)}<b>${deg(g.temp)}</b>${tagFor(gl)}`, { p: g.usage, cls: gl }));
     L.push(row('VRAM', `${bytes(g.vramUsed)}<b>/ ${bytes(g.vramTotal)}</b>`, { p: vram }));
     const ml = lv(s.memory, 85, 93) || 'ok';
-    L.push(row('Memory', `${pct(s.memory, 1)}<b>${s.ramTemp == null ? 'no sensor' : deg(s.ramTemp)}</b>${tagFor(ml)}`, { p: s.memory, cls: ml }));
+    L.push(row('Memory', `${pct(s.memory, 1)}<b>${deg(s.ramTemp)}</b>${tagFor(ml)}`, { p: s.memory, cls: ml }));
     (s.drives || []).slice(0, 3).forEach((d, i) => {
       const tag = (d.letters || '').trim() || `Disk ${d.index ?? i}`;
       const l = lv(d.temp, t.ssd - 8, t.ssd) || 'ok';
@@ -257,7 +271,7 @@
   function hwPanel() {
     const g = s.gpu || {};
     const L = [row('Processor', esc(cpuName())), row('Graphics', esc(String(g.name || '—').replace(/NVIDIA |AMD |\(R\)|\(TM\)/g, '')))];
-    L.push(row('Memory', `${bytes(s.memoryTotal)}<b>${s.ramTemp == null ? '' : deg(s.ramTemp)}</b>`));
+    L.push(row('Memory', `${bytes(s.memoryTotal)}<b>${deg(s.ramTemp)}</b>`));
     (s.drives || []).slice(0, 3).forEach((d, i) => L.push(row(esc((d.letters || '').trim() || 'Disk ' + i), esc(d.model || '—'))));
     L.push(row('System', esc(String(s.os || '—').replace(/\s*\(.*\)/, ''))));
     $('wsHw').innerHTML = L.join('');
@@ -314,7 +328,7 @@
       row('Processes', `${s.processCount ?? '—'}`),
       row('CPU clock', s.cpuFreq ? `${(s.cpuFreq / 1000).toFixed(2)} GHz` : '—'),
       row('CPU power', s.cpuPower != null ? `${Math.round(s.cpuPower)} W` : '—'),
-      row('GPU power', g.power != null ? `${Math.round(g.power)} W<b>hot ${deg(g.hotspot)}</b>` : '—'),
+      row('GPU power', g.power != null ? `${Math.round(g.power)} W${g.hotspot != null ? `<b>hot ${deg(g.hotspot)}</b>` : ''}` : '—'),
       row('RAM used', `${bytes(s.memoryUsed)}<b>/ ${bytes(s.memoryTotal)}</b>`, { p: s.memory }),
       row('Swap', s.swapTotal ? `${bytes(s.swapUsed)}<b>/ ${bytes(s.swapTotal)}</b>` : 'off', { p: swapP }),
       row('Download', rate(s.net?.rx)),
@@ -388,7 +402,7 @@
     const vis = (id, on) => $(id).classList.toggle('hidden', !on);
     vis('wsCoreSec', o.showCores !== false); vis('wsVolSec', o.showDisks !== false);
     vis('wsProcSec', o.showProcs !== false); vis('wsWxSec', o.showWeather !== false); vis('wsFcSec', o.showWeather !== false);
-    vis('wsLogSec', o.showLog !== false); vis('wsAlertSec', o.showAlerts !== false); vis('wsAudioSec', o.showAudio !== false);
+    vis('wsLogSec', o.showLog !== false); vis('wsPerfSec', o.showPerf !== false); vis('wsAlertSec', o.showAlerts !== false); vis('wsAudioSec', o.showAudio !== false);
     vis('wsStatSec', o.showStats !== false); vis('wsSysSec', o.showSystems !== false); vis('wsHwSec', o.showHardware !== false);
     $('wsMedia').innerHTML = o.showMedia !== false && media?.title
       ? `<span class="acc">${media.playing ? '▶' : '❚❚'}</span> ${esc(media.title)}${media.artist ? ` <span class="dim">— ${esc(media.artist)}</span>` : ''}`
@@ -401,6 +415,43 @@
     $('wsStatus').innerHTML = `STATUS: ${A.length ? `<span class="${bad ? 'bad-t' : 'warn-t'} blink">${bad ? 'CRITICAL' : 'WARNING'} · ${A.length} ALERT${A.length > 1 ? 'S' : ''}</span>` : '<span class="ok">OPERATIONAL</span>'}`;
     $('wsFoot').innerHTML = `${esc(String(s.os || '').replace(/\s*\(.*\)/, '').toUpperCase())} · SENSORS: <span class="acc">${sensorsName()}</span>`;
     fit();
+    drawPerf();
+  }
+
+  // Live history: CPU, GPU and RAM load lines with soft fills, network as faint bars.
+  function drawPerf() {
+    const c = $('wsPerf'); if (!c || o.showPerf === false) return;
+    const box = c.getBoundingClientRect(); if (box.width < 10 || box.height < 10) return;
+    const dpr = Math.min(2, devicePixelRatio || 1);
+    if (c.width !== Math.round(box.width * dpr) || c.height !== Math.round(box.height * dpr)) { c.width = Math.round(box.width * dpr); c.height = Math.round(box.height * dpr); }
+    const ctx = c.getContext('2d'); ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const W = box.width, Hh = box.height, N = 90;
+    const css = getComputedStyle(document.documentElement);
+    const P = css.getPropertyValue('--ws-p').trim(), A = css.getPropertyValue('--ws-a').trim(), T = css.getPropertyValue('--ws-t').trim(), OK = css.getPropertyValue('--ws-ok').trim();
+    ctx.clearRect(0, 0, W, Hh);
+    ctx.strokeStyle = P; ctx.globalAlpha = 0.12; ctx.lineWidth = 1;
+    for (let k = 0; k <= 4; k++) { const y = Math.round((Hh - 1) * k / 4) + 0.5; ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke(); }
+    for (let k = 1; k < 9; k++) { const x = Math.round(W * k / 9) + 0.5; ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, Hh); ctx.stroke(); }
+    ctx.globalAlpha = 1;
+    const X = (i, len) => W - ((len - 1 - i) / (N - 1)) * W;
+    const nmax = Math.max(1, ...H.net.filter(Boolean));
+    ctx.fillStyle = T; ctx.globalAlpha = 0.1;
+    H.net.forEach((v, i) => { const h = ((v || 0) / nmax) * Hh * 0.5; ctx.fillRect(X(i, H.net.length) - W / N / 2, Hh - h, W / N - 1, h); });
+    ctx.globalAlpha = 1;
+    const line = (arr, color, fill) => {
+      const pts = arr.map((v, i) => (v == null ? null : [X(i, arr.length), Hh - 2 - (Math.min(100, v) / 100) * (Hh - 4)])).filter(Boolean);
+      if (pts.length < 2) return;
+      if (fill) {
+        const g = ctx.createLinearGradient(0, 0, 0, Hh); g.addColorStop(0, color + '55'); g.addColorStop(1, color + '00');
+        ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y))); ctx.lineTo(pts[pts.length - 1][0], Hh); ctx.lineTo(pts[0][0], Hh); ctx.closePath(); ctx.fillStyle = g; ctx.fill();
+      }
+      ctx.beginPath(); pts.forEach(([x, y], i) => (i ? ctx.lineTo(x, y) : ctx.moveTo(x, y)));
+      ctx.strokeStyle = color; ctx.lineWidth = 1.8; ctx.shadowColor = color; ctx.shadowBlur = 8 * (o.glow ?? 0.5); ctx.stroke(); ctx.shadowBlur = 0;
+      const [lx, ly] = pts[pts.length - 1]; ctx.fillStyle = color; ctx.beginPath(); ctx.arc(lx - 2, ly, 2.6, 0, Math.PI * 2); ctx.fill();
+    };
+    line(H.ram, OK, false); line(H.gpu, P, true); line(H.cpu, A, true);
+    const last = (a) => a[a.length - 1];
+    $('wsLegend').innerHTML = `<span><i style="background:${A}"></i>CPU ${pct(last(H.cpu))}</span><span><i style="background:${P}"></i>GPU ${pct(last(H.gpu))}</span><span><i style="background:${OK}"></i>RAM ${pct(last(H.ram))}</span><span><i style="background:${T};opacity:.4"></i>NET ${rate(last(H.net))}</span>`;
   }
 
   // Scale the text with the screen, then shrink until no panel overflows.
@@ -409,7 +460,7 @@
     const ws = $('ws'); if (!ws || !booted) return;
     const size = Math.max(50, Math.min(100, o.wsSize ?? 100)) / 100;
     const key = `${innerWidth}x${innerHeight}|${size}|${o.wsText}|${o.showHeader}`;
-    let fs = Math.min(innerWidth * size / 1920, innerHeight * size / 1080) * 14.5 * (o.wsText || 1);
+    let fs = Math.min(innerWidth * size / 1920, innerHeight * size / 1080) * 14.5 * (o.wsText || 1) * (o.font === 'vt323' ? 1.3 : 1);
     if (key === lastFit && !overflow()) return;
     lastFit = key;
     for (let i = 0; i < 25; i++) {
@@ -425,7 +476,7 @@
   // ------------------------------------------------------------ wiring
   Wallgates.on('properties', (v) => { o = v; lastFit = ''; applyLook(); });
   Wallgates.on('pause', () => { if (o.style !== 'classic') document.body.classList.toggle('paused', !!Wallgates.paused); });
-  Wallgates.on('system', (d) => { prev = s; s = d; if (o.style === 'classic' || Wallgates.paused) return; detectEvents(); if (booted) render(); });
+  Wallgates.on('system', (d) => { prev = s; s = d; pushH(H.cpu, d.cpu); pushH(H.gpu, d.gpu?.usage); pushH(H.ram, d.memory); pushH(H.net, (d.net?.rx || 0) + (d.net?.tx || 0)); if (o.style === 'classic' || Wallgates.paused) return; detectEvents(); if (booted) render(); });
   Wallgates.on('weather', (d) => {
     const first = !w; w = d;
     if (booted && (first || throttle('wx', 600000))) addLog(`Weather uplink · ${String(d.location || '').split(',')[0]} ${Math.round(d.temperature)}° ${String(d.description || '').toLowerCase()}`, 'info');
