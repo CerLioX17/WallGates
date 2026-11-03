@@ -3,6 +3,7 @@
 <head>
 <meta charset="utf-8">
 <script src="/__wallgates/wallgates-sdk.js"></script>
+<link rel="stylesheet" href="workstation.css">
 <style>
   :root { --desk: #000; --bg: #0c0c0c; --fg: #cccccc; --hi: #f2f2f2; --dim: #767676; --lab: #3a96dd; --frame: #3a3a3a;
           --ok: #16c60c; --warn: #c19c00; --bad: #e74856; --acc: #61d6d6; --bar: #333; --fs: 15px; --w: 66vw; --op: 0.94; }
@@ -65,7 +66,7 @@
   <div class="foot"><pre id="music"></pre><pre id="status"></pre></div>
 </div>
 <script>
-// System Terminal v4 — Wallgates built-in wallpaper (CC BY 4.0). Terminal-style monitor, text only.
+// System Terminal — Classic style (v4) — Wallgates built-in wallpaper (CC BY 4.0). Terminal-style monitor, text only.
 const $ = (id) => document.getElementById(id);
 const lang = navigator.language || 'en-US';
 const COLW = 58; // characters per panel line
@@ -247,6 +248,7 @@ function wxPanel() {
 
 // ---------------------------------------------------------------- render
 function render() {
+  if (o.style !== 'classic') return;
   const user = String(o.operator || 'operator').replace(/[^\w.-]/g, '').toLowerCase() || 'operator';
   const host = (s?.host || 'wallgates').toLowerCase();
   paint('cmd', [[seg(`${user}@${host}`, 'acc'), seg(':', 'dim'), seg('~', 'lab'), seg('$ ', 'dim'), seg(typed, 'hi'), ...(typingDone ? [] : [['', 'cursor']])]]);
@@ -289,6 +291,7 @@ function fit() {
 }
 
 function applyLook() {
+  if (o.style !== 'classic') return;
   const cls = [o.theme || 'wallgates', `pos-${o.position || 'center'}`, `bg-${o.background || 'black'}`];
   if (Wallgates.paused) cls.push('paused');
   document.body.className = cls.join(' ');
@@ -318,7 +321,8 @@ Wallgates.on('system', (d) => {
 Wallgates.on('weather', (d) => { w = d; if (typingDone) render(); });
 Wallgates.on('media', (m) => { media = m; if (typingDone) render(); });
 setInterval(() => { if (!Wallgates.paused) render(); }, 1000);
-addEventListener('resize', fit);
+addEventListener('resize', () => { if (o.style === 'classic') fit(); });
 </script>
+<script src="workstation.js"></script>
 </body>
 </html>

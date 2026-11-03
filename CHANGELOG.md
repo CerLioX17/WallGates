@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.8.0
+**System Terminal 4.1 — new Workstation style.**
+- New default style: a full-screen monitoring workstation with header and status bars, three
+  panels and the Share Tech Mono font (bundled, works offline).
+- Left: systems status rows with load bars and NOMINAL / CAUTION / CRITICAL tags, a CPU core grid
+  that lights up busy cores, storage volumes and a hardware summary.
+- Center: top 5 processes, weather (UV, air quality, wind, sunrise/sunset), a 12-hour and 4-day
+  forecast, and a live event log built from real events (temperature and load changes, heavy disk
+  and network activity, top-process changes, weather updates, now playing, periodic health reports).
+- Right: statistics, fans, real alerts with your thresholds, and a small audio analyser with
+  bass/treble levels.
+- Wallgates boot sequence that detects your real hardware.
+- Fully customizable: colour presets (Wallgates violet/cyan, amber, green, ice cyan, mono white)
+  or your own colours and background gradient, size, text size, glow, optional scanlines, boot
+  sequence, every panel on/off, health-report interval and log length.
+- The previous look is still available: Style → Classic terminal.
+
 ## 0.7.0
 **System Terminal 4.0 — a bigger, more detailed terminal monitor.**
 - Now a two-column, btop-style panel layout using up to 70% of the screen width (default 66%,

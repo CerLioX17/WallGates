@@ -1,12 +1,12 @@
 {
   "name": "System Terminal",
   "author": "Wallgates",
-  "description": "A terminal-style system monitor: CPU with every core, GPU, memory and every drive with load and temperatures, top processes, network and fans, weather with UV, air quality, hourly and 4-day forecast, sun, moon and music. Clean text, no effects, up to 70% of the screen.",
+  "description": "A full system monitor in two styles. Workstation: a full-screen monitoring console with systems status, CPU core grid, top processes, weather and forecast, a live event log built from real events, alerts, statistics and a small audio analyser. Classic: a clean terminal window. CPU, GPU, RAM and SSD load and temperatures, fans, network, UV and air quality.",
   "type": "html",
   "entry": "index.html",
   "preview": "preview.jpg",
   "license": "CC-BY-4.0",
-  "version": "4.0.0",
+  "version": "4.1.0",
   "tags": [
     "system",
     "monitor",
@@ -19,11 +19,310 @@
   "capabilities": [
     "system",
     "weather",
-    "media"
+    "media",
+    "audio"
   ],
   "properties": {
-    "g1": {
-      "label": "Window",
+    "style": {
+      "label": "Style",
+      "type": "select",
+      "default": "workstation",
+      "options": [
+        {
+          "value": "workstation",
+          "label": "Workstation (full screen)"
+        },
+        {
+          "value": "classic",
+          "label": "Classic terminal"
+        }
+      ]
+    },
+    "gw1": {
+      "label": "Workstation look",
+      "type": "group"
+    },
+    "wsPalette": {
+      "label": "Colours",
+      "type": "select",
+      "default": "wallgates",
+      "options": [
+        {
+          "value": "wallgates",
+          "label": "Wallgates (violet / cyan)"
+        },
+        {
+          "value": "amber",
+          "label": "Amber"
+        },
+        {
+          "value": "green",
+          "label": "Green phosphor"
+        },
+        {
+          "value": "cyan",
+          "label": "Ice cyan"
+        },
+        {
+          "value": "white",
+          "label": "Mono white"
+        },
+        {
+          "value": "custom",
+          "label": "Custom (colours below)"
+        }
+      ]
+    },
+    "primaryColor": {
+      "label": "Primary colour (custom)",
+      "type": "color",
+      "default": "#a78bfa"
+    },
+    "accentColor": {
+      "label": "Accent colour (custom)",
+      "type": "color",
+      "default": "#22d3ee"
+    },
+    "textColor": {
+      "label": "Text colour (custom)",
+      "type": "color",
+      "default": "#dcd8ff"
+    },
+    "bgColor1": {
+      "label": "Background colour 1 (custom)",
+      "type": "color",
+      "default": "#06050d"
+    },
+    "bgColor2": {
+      "label": "Background colour 2 (custom)",
+      "type": "color",
+      "default": "#0f0b20"
+    },
+    "gradientRotation": {
+      "label": "Background gradient angle",
+      "type": "slider",
+      "min": 0,
+      "max": 360,
+      "step": 5,
+      "default": 135
+    },
+    "wsSize": {
+      "label": "Size (% of screen)",
+      "type": "slider",
+      "min": 50,
+      "max": 100,
+      "step": 1,
+      "default": 100
+    },
+    "wsText": {
+      "label": "Text size",
+      "type": "slider",
+      "min": 0.7,
+      "max": 1.5,
+      "step": 0.05,
+      "default": 1
+    },
+    "glow": {
+      "label": "Text glow",
+      "type": "slider",
+      "min": 0,
+      "max": 1,
+      "step": 0.05,
+      "default": 0.5
+    },
+    "scanlines": {
+      "label": "Scanlines",
+      "type": "bool",
+      "default": false
+    },
+    "scanlineOpacity": {
+      "label": "Scanline opacity",
+      "type": "slider",
+      "min": 0.02,
+      "max": 0.6,
+      "step": 0.02,
+      "default": 0.12
+    },
+    "scanlineSpeed": {
+      "label": "Scanline speed",
+      "type": "slider",
+      "min": 0.1,
+      "max": 5,
+      "step": 0.1,
+      "default": 1
+    },
+    "boot": {
+      "label": "Boot sequence on start",
+      "type": "bool",
+      "default": true
+    },
+    "bootSpeed": {
+      "label": "Boot line delay (ms)",
+      "type": "slider",
+      "min": 40,
+      "max": 600,
+      "step": 10,
+      "default": 160
+    },
+    "gw2": {
+      "label": "Workstation panels",
+      "type": "group"
+    },
+    "showHeader": {
+      "label": "Header bar",
+      "type": "bool",
+      "default": true
+    },
+    "showSystems": {
+      "label": "Systems",
+      "type": "bool",
+      "default": true
+    },
+    "showHardware": {
+      "label": "Hardware summary",
+      "type": "bool",
+      "default": true
+    },
+    "showStats": {
+      "label": "Statistics",
+      "type": "bool",
+      "default": true
+    },
+    "showLog": {
+      "label": "Event log",
+      "type": "bool",
+      "default": true
+    },
+    "showAlerts": {
+      "label": "Alerts",
+      "type": "bool",
+      "default": true
+    },
+    "showAudio": {
+      "label": "Audio analysis (small block)",
+      "type": "bool",
+      "default": true
+    },
+    "audioSens": {
+      "label": "Audio sensitivity",
+      "type": "slider",
+      "min": 0.2,
+      "max": 3,
+      "step": 0.1,
+      "default": 1
+    },
+    "logInterval": {
+      "label": "Health report every (seconds)",
+      "type": "slider",
+      "min": 3,
+      "max": 60,
+      "step": 1,
+      "default": 8
+    },
+    "logLines": {
+      "label": "Event log lines kept",
+      "type": "slider",
+      "min": 10,
+      "max": 150,
+      "step": 5,
+      "default": 60
+    },
+    "gs": {
+      "label": "Both styles",
+      "type": "group"
+    },
+    "operator": {
+      "label": "User name in the prompt",
+      "type": "text",
+      "default": "Operator"
+    },
+    "format24": {
+      "label": "24-hour clock",
+      "type": "bool",
+      "default": true
+    },
+    "fahrenheit": {
+      "label": "Use °F",
+      "type": "bool",
+      "default": false
+    },
+    "showProcs": {
+      "label": "Top processes",
+      "type": "bool",
+      "default": true
+    },
+    "showCores": {
+      "label": "Per-core CPU load",
+      "type": "bool",
+      "default": true
+    },
+    "showDisks": {
+      "label": "All drives & volumes",
+      "type": "bool",
+      "default": true
+    },
+    "showNet": {
+      "label": "Network & fans",
+      "type": "bool",
+      "default": true
+    },
+    "showWeather": {
+      "label": "Weather & forecast",
+      "type": "bool",
+      "default": true
+    },
+    "showSun": {
+      "label": "Sun & moon",
+      "type": "bool",
+      "default": true
+    },
+    "showMedia": {
+      "label": "Now playing",
+      "type": "bool",
+      "default": true
+    },
+    "n0": {
+      "label": "Weather: Wallgates → Settings → Weather & location. CPU/RAM temperatures and fans: Settings → Advanced sensors.",
+      "type": "note"
+    },
+    "g3": {
+      "label": "Alerts (highlighted in red)",
+      "type": "group"
+    },
+    "cpuTempMax": {
+      "label": "CPU temperature alert (°C)",
+      "type": "slider",
+      "min": 50,
+      "max": 105,
+      "step": 1,
+      "default": 85
+    },
+    "gpuTempMax": {
+      "label": "GPU temperature alert (°C)",
+      "type": "slider",
+      "min": 50,
+      "max": 105,
+      "step": 1,
+      "default": 83
+    },
+    "ssdTempMax": {
+      "label": "SSD temperature alert (°C)",
+      "type": "slider",
+      "min": 40,
+      "max": 90,
+      "step": 1,
+      "default": 65
+    },
+    "loadMax": {
+      "label": "Load alert (%)",
+      "type": "slider",
+      "min": 50,
+      "max": 100,
+      "step": 1,
+      "default": 92
+    },
+    "gc": {
+      "label": "Classic style only",
       "type": "group"
     },
     "theme": {
@@ -112,11 +411,6 @@
       "step": 0.05,
       "default": 0.94
     },
-    "titleBar": {
-      "label": "Window title bar",
-      "type": "bool",
-      "default": true
-    },
     "background": {
       "label": "Desktop background",
       "type": "select",
@@ -140,62 +434,8 @@
         }
       ]
     },
-    "operator": {
-      "label": "User name in the prompt",
-      "type": "text",
-      "default": "Operator"
-    },
     "typing": {
       "label": "Type the command on start",
-      "type": "bool",
-      "default": true
-    },
-    "format24": {
-      "label": "24-hour clock",
-      "type": "bool",
-      "default": true
-    },
-    "fahrenheit": {
-      "label": "Use °F",
-      "type": "bool",
-      "default": false
-    },
-    "g2": {
-      "label": "Sections",
-      "type": "group"
-    },
-    "showProcs": {
-      "label": "Top processes",
-      "type": "bool",
-      "default": true
-    },
-    "showCores": {
-      "label": "Per-core CPU load",
-      "type": "bool",
-      "default": true
-    },
-    "showDisks": {
-      "label": "All drives & volumes",
-      "type": "bool",
-      "default": true
-    },
-    "showNet": {
-      "label": "Network & fans",
-      "type": "bool",
-      "default": true
-    },
-    "showWeather": {
-      "label": "Weather & forecast",
-      "type": "bool",
-      "default": true
-    },
-    "showSun": {
-      "label": "Sun & moon",
-      "type": "bool",
-      "default": true
-    },
-    "showMedia": {
-      "label": "Now playing",
       "type": "bool",
       "default": true
     },
@@ -203,51 +443,6 @@
       "label": "Load history (text sparklines)",
       "type": "bool",
       "default": true
-    },
-    "showLogo": {
-      "label": "Wallgates ASCII logo",
-      "type": "bool",
-      "default": false
-    },
-    "n0": {
-      "label": "Weather: Wallgates → Settings → Weather & location. CPU/RAM temperatures and fans: Settings → Advanced sensors.",
-      "type": "note"
-    },
-    "g3": {
-      "label": "Alerts (highlighted in red)",
-      "type": "group"
-    },
-    "cpuTempMax": {
-      "label": "CPU temperature alert (°C)",
-      "type": "slider",
-      "min": 50,
-      "max": 105,
-      "step": 1,
-      "default": 85
-    },
-    "gpuTempMax": {
-      "label": "GPU temperature alert (°C)",
-      "type": "slider",
-      "min": 50,
-      "max": 105,
-      "step": 1,
-      "default": 83
-    },
-    "ssdTempMax": {
-      "label": "SSD temperature alert (°C)",
-      "type": "slider",
-      "min": 40,
-      "max": 90,
-      "step": 1,
-      "default": 65
-    },
-    "loadMax": {
-      "label": "Load alert (%)",
-      "type": "slider",
-      "min": 50,
-      "max": 100,
-      "step": 1,
-      "default": 92
     }
   }
 }
